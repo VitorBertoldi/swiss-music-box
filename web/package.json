@@ -1,0 +1,33 @@
+{
+	"name": "swiss-music-box-web",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc --noEmit && vite build",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check .",
+		"format": "biome check --write .",
+		"test": "vitest run",
+		"contract": "json2ts -i ../contract/day.schema.json -o src/contract/day.ts --bannerComment \"/* Generated from contract/day.schema.json by json-schema-to-typescript. Do not edit; run make contract. */\" && json2ts -i ../contract/motion.schema.json -o src/contract/motion.ts --bannerComment \"/* Generated from contract/motion.schema.json by json-schema-to-typescript. Do not edit; run make contract. */\" && json2ts -i ../contract/relief.schema.json -o src/contract/relief.ts --bannerComment \"/* Generated from contract/relief.schema.json by json-schema-to-typescript. Do not edit; run make contract. */\" && json2ts -i ../contract/asset_bundle.schema.json -o src/contract/asset_bundle.ts --bannerComment \"/* Generated from contract/asset_bundle.schema.json by json-schema-to-typescript. Do not edit; run make contract. */\""
+	},
+	"dependencies": {
+		"@deck.gl/core": "^9.4.0",
+		"@deck.gl/geo-layers": "^9.4.0",
+		"@deck.gl/layers": "^9.4.0",
+		"@deck.gl/mapbox": "^9.4.0",
+		"@tonejs/midi": "^2.0.28",
+		"maplibre-gl": "^5.24.0",
+		"pmtiles": "^4.5.0",
+		"tone": "^15.1.22"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"@types/node": "^26.6.5",
+		"json-schema-to-typescript": "^16.0.0",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.4",
+		"vitest": "^5.0.5"
+	}
+}

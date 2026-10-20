@@ -1,0 +1,224 @@
+{
+  "$defs": {
+    "Legs": {
+      "additionalProperties": false,
+      "description": "Column-wise: leg i travels `segments[segment[i]]` (backwards if `reversed`).",
+      "properties": {
+        "segment": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "reversed": {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        },
+        "depart_minute": {
+          "description": "May exceed 1440 for trips past midnight",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "arrive_minute": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment",
+        "reversed",
+        "depart_minute",
+        "arrive_minute"
+      ],
+      "title": "Legs",
+      "type": "object"
+    },
+    "Segment": {
+      "additionalProperties": false,
+      "description": "The path between two consecutive stops, shared by every trip that uses it.",
+      "properties": {
+        "coordinates": {
+          "description": "Flat [longitude, latitude, ...]; OSM geometry with redundant points removed",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "overview_coordinates": {
+          "description": "The same path simplified to 15 m, for country-wide views",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "length_m": {
+          "description": "Length along the network",
+          "type": "integer"
+        },
+        "route": {
+          "description": "How the path was found",
+          "enum": [
+            "track",
+            "ferry_route",
+            "straight"
+          ],
+          "type": "string"
+        },
+        "tunnels": {
+          "items": {
+            "$ref": "#/$defs/TunnelPassage"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "coordinates",
+        "overview_coordinates",
+        "length_m",
+        "route",
+        "tunnels"
+      ],
+      "title": "Segment",
+      "type": "object"
+    },
+    "Trips": {
+      "additionalProperties": false,
+      "description": "Column-wise: trip i has `layer[i]` and legs `first_leg[i] .. first_leg[i]+leg_count[i]`.",
+      "properties": {
+        "layer": {
+          "items": {
+            "enum": [
+              "long_rail",
+              "mountain_rail",
+              "regional_rail",
+              "boat",
+              "aerial",
+              "funicular"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "first_leg": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "leg_count": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "layer",
+        "first_leg",
+        "leg_count"
+      ],
+      "title": "Trips",
+      "type": "object"
+    },
+    "Tunnel": {
+      "additionalProperties": false,
+      "description": "A long tunnel found in OpenStreetMap (`tunnel=yes` on rail ways).",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "description": "OSM name, or 'Tunnel near <station>' when OSM has none",
+          "type": "string"
+        },
+        "length_m": {
+          "type": "integer"
+        },
+        "coordinates": {
+          "description": "Flat [longitude, latitude, ...] of its axis",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "length_m",
+        "coordinates"
+      ],
+      "title": "Tunnel",
+      "type": "object"
+    },
+    "TunnelPassage": {
+      "additionalProperties": false,
+      "description": "The part of a segment that runs inside a tunnel, as fractions of the segment length.",
+      "properties": {
+        "tunnel": {
+          "description": "Index into Motion.tunnels",
+          "type": "integer"
+        },
+        "start_fraction": {
+          "type": "number"
+        },
+        "end_fraction": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "tunnel",
+        "start_fraction",
+        "end_fraction"
+      ],
+      "title": "TunnelPassage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "How every moving vehicle travels on one service day.",
+  "properties": {
+    "schema_version": {
+      "const": 3,
+      "default": 3,
+      "type": "integer"
+    },
+    "service_date": {
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/Segment"
+      },
+      "type": "array"
+    },
+    "trips": {
+      "$ref": "#/$defs/Trips"
+    },
+    "legs": {
+      "$ref": "#/$defs/Legs"
+    },
+    "tunnels": {
+      "items": {
+        "$ref": "#/$defs/Tunnel"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "service_date",
+    "segments",
+    "trips",
+    "legs",
+    "tunnels"
+  ],
+  "title": "Motion",
+  "type": "object"
+}

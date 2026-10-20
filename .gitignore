@@ -1,0 +1,6 @@
+# Large downloaded inputs and caches: rebuild with `make data`
+data/raw/
+data/cache/
+.DS_Store
+explorations/screens/
+tools/

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Swiss Music Box</title>
+	</head>
+	<body>
+		<section id="stage" aria-label="Map of Switzerland with every public-transport vehicle; drag to pan, scroll to zoom, right-drag to tilt"></section>
+
+		<header class="hud">
+			<div id="clock" class="clock">00:00</div>
+			<div class="hud-row"><span id="chord"></span> · <span id="rate">0 notes/s</span></div>
+			<div id="caption" class="caption"></div>
+		</header>
+
+		<aside id="controls" class="panel">
+			<div class="transport">
+				<button id="play" type="button">Play</button>
+				<input id="scrub" type="range" min="0" max="1439" step="1" value="0" aria-label="Time of day" />
+			</div>
+
+			<fieldset>
+				<legend>View</legend>
+				<div id="scenes" class="button-row"></div>
+				<div id="cameras" class="button-row"></div>
+				<div class="button-row">
+					<button id="projector" type="button" aria-pressed="false">Projector (P)</button>
+					<button id="fullscreen" type="button">Fullscreen (F)</button>
+				</div>
+			</fieldset>
+
+			<fieldset>
+				<legend>Score</legend>
+				<label>Day lasts <select id="duration"></select></label>
+				<label>
+					Altitude → pitch
+					<select id="mapping">
+						<option value="rank">rank (even spread)</option>
+						<option value="log">log</option>
+						<option value="linear">linear</option>
+					</select>
+				</label>
+			</fieldset>
+
+			<fieldset>
+				<legend>Voices</legend>
+				<div id="voices" class="voices"></div>
+			</fieldset>
+
+			<fieldset>
+				<legend>Outputs</legend>
+				<label><input id="synth" type="checkbox" checked /> Browser synth</label>
+				<label>MIDI out <select id="midi-port"></select></label>
+				<label>
+					Channels
+					<select id="layout">
+						<option value="per-layer">1 per layer (ch 1–5)</option>
+						<option value="per-layer-and-zone">1 per layer × west/centre/east (ch 1–15)</option>
+					</select>
+				</label>
+				<button id="export" type="button">Export .mid for Ableton</button>
+			</fieldset>
+
+			<p class="muted keys">Space play · 1–3 scenes · O overview · T tour · G follow a train · M free · P projector · H hide panel · F fullscreen. Drag, scroll and right-drag the map to explore.</p>
+			<p id="error" class="error" role="alert"></p>
+		</aside>
+
+		<section id="calibration" class="calibration" hidden>
+			<div class="ramp ramp-grey"></div>
+			<div class="ramp ramp-colour"></div>
+			<div class="safe-area" aria-hidden="true"></div>
+			<p id="calibration-readout" class="readout"></p>
+		</section>
+
+
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>

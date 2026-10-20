@@ -1,0 +1,17 @@
+trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type
+T1_ic,08:00:00,08:00:00,A1,1,0,0
+T1_ic,08:28:00,08:30:00,P_B,2,0,0
+T1_ic,09:25:00,09:25:00,P_C,3,0,0
+T2_monday_only,08:00:00,08:00:00,A1,1,0,0
+T2_monday_only,09:00:00,09:00:00,P_C,2,0,0
+T3_removed,07:00:00,07:00:00,A2,1,0,0
+T3_removed,07:10:00,07:10:00,P_B,2,0,0
+T4_night_bus,23:50:00,23:50:00,A2,1,0,0
+T4_night_bus,24:10:00,24:10:00,P_B,2,0,0
+T4_night_bus,24:30:00,24:30:00,P_C,3,0,0
+T5_cable_frequency,00:00:00,00:00:00,A1,1,0,0
+T5_cable_frequency,00:05:00,00:05:00,P_B,2,0,0
+T6_taxi,12:00:00,12:00:00,A1,1,0,0
+T6_taxi,12:10:00,12:10:00,P_B,2,0,0
+T7_to_praha,10:00:00,10:00:00,A1,1,0,0
+T7_to_praha,18:00:00,18:00:00,X,2,0,0

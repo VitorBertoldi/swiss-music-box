@@ -1,0 +1,4 @@
+service_id,date,exception_type
+S_REMOVED,20261021,2
+S_ADDED,20261021,1
+S_ADDED,20261022,1

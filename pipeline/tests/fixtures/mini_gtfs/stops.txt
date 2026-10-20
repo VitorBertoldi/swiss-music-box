@@ -1,0 +1,7 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station
+P_A,Alpha,46.95108,7.43864,1,
+A1,Alpha,46.95110,7.43860,,P_A
+A2,Alpha,46.95112,7.43866,,P_A
+P_B,Beta,47.04904,8.54944,1,
+P_C,Gamma,46.19543,9.02951,1,
+X,Praha,50.08306,14.43604,,

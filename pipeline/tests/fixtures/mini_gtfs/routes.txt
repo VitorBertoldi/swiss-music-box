@@ -1,0 +1,5 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type
+R_IC,1,IC2,,IC,102
+R_BUS,1,1,,B,700
+R_CAB,1,,,PB,1300
+R_TAXI,1,,,TX,1500

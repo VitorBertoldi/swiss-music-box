@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "description": "A shaded-relief image, Web-Mercator aligned, transparent outside Switzerland.",
+  "properties": {
+    "schema_version": {
+      "const": 3,
+      "default": 3,
+      "type": "integer"
+    },
+    "image": {
+      "description": "PNG file name, next to this file",
+      "type": "string"
+    },
+    "west": {
+      "description": "Longitude of the left edge",
+      "type": "number"
+    },
+    "south": {
+      "description": "Latitude of the bottom edge",
+      "type": "number"
+    },
+    "east": {
+      "type": "number"
+    },
+    "north": {
+      "type": "number"
+    },
+    "attribution": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "image",
+    "west",
+    "south",
+    "east",
+    "north",
+    "attribution"
+  ],
+  "title": "Relief",
+  "type": "object"
+}

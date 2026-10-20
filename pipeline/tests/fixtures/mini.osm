@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A tiny hand-made OSM file matching the stations of mini_gtfs:
+  Alpha (Bern) - Beta (Arth-Goldau) - Gamma (Bellinzona).
+  Each feature exists to exercise one rule of the pipeline; see the comments.
+-->
+<osm version="0.6" generator="hand">
+  <!-- main line Alpha - Beta - north portal -->
+  <node id="1" lat="46.95108" lon="7.43864" version="1"/>
+  <node id="2" lat="47.00000" lon="8.00000" version="1"/>
+  <node id="3" lat="47.04904" lon="8.54944" version="1"/>
+  <node id="4" lat="46.90000" lon="8.65000" version="1"/>
+  <!-- south portal - Gamma -->
+  <node id="5" lat="46.70000" lon="8.80000" version="1"/>
+  <node id="6" lat="46.19543" lon="9.02951" version="1"/>
+  <!-- second tube of the base tunnel, 30 m east of the first -->
+  <node id="14" lat="46.90000" lon="8.65040" version="1"/>
+  <node id="15" lat="46.70000" lon="8.80040" version="1"/>
+  <!-- a different, far-away tunnel that happens to share the name -->
+  <node id="20" lat="46.50000" lon="6.60000" version="1"/>
+  <node id="21" lat="46.53000" lon="6.60000" version="1"/>
+  <!-- an unnamed 4.4 km tunnel close to Gamma -->
+  <node id="30" lat="46.20000" lon="9.05000" version="1"/>
+  <node id="31" lat="46.24000" lon="9.05000" version="1"/>
+  <!-- a short (1.1 km) named tunnel: below the long-tunnel threshold -->
+  <node id="32" lat="46.30000" lon="9.10000" version="1"/>
+  <node id="33" lat="46.31000" lon="9.10000" version="1"/>
+  <!-- a siding at Alpha -->
+  <node id="40" lat="46.95200" lon="7.44000" version="1"/>
+  <!-- a cable car and a drag lift -->
+  <node id="50" lat="46.60000" lon="7.90000" version="1"/>
+  <node id="51" lat="46.62000" lon="7.92000" version="1"/>
+  <node id="52" lat="46.63000" lon="7.93000" version="1"/>
+  <!-- a lake of about 0.8 km2 and a pond of about 0.01 km2 -->
+  <node id="60" lat="46.80000" lon="6.80000" version="1"/>
+  <node id="61" lat="46.80000" lon="6.81000" version="1"/>
+  <node id="62" lat="46.80800" lon="6.81000" version="1"/>
+  <node id="63" lat="46.80800" lon="6.80000" version="1"/>
+  <node id="64" lat="46.70000" lon="6.70000" version="1"/>
+  <node id="65" lat="46.70000" lon="6.70100" version="1"/>
+  <node id="66" lat="46.70100" lon="6.70100" version="1"/>
+  <!-- a motorway and a residential street (not used) -->
+  <node id="70" lat="47.10000" lon="7.50000" version="1"/>
+  <node id="71" lat="47.10000" lon="7.60000" version="1"/>
+
+  <way id="100" version="1">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/>
+    <tag k="railway" v="rail"/>
+  </way>
+  <way id="101" version="1">
+    <nd ref="4"/><nd ref="5"/>
+    <tag k="railway" v="rail"/><tag k="tunnel" v="yes"/><tag k="name" v="Test-Basistunnel"/>
+  </way>
+  <way id="102" version="1">
+    <nd ref="14"/><nd ref="15"/>
+    <tag k="railway" v="rail"/><tag k="tunnel" v="yes"/><tag k="name" v="Test-Basistunnel"/>
+  </way>
+  <way id="103" version="1">
+    <nd ref="5"/><nd ref="6"/>
+    <tag k="railway" v="rail"/>
+  </way>
+  <way id="104" version="1">
+    <nd ref="20"/><nd ref="21"/>
+    <tag k="railway" v="rail"/><tag k="tunnel" v="yes"/><tag k="name" v="Test-Basistunnel"/>
+  </way>
+  <way id="105" version="1">
+    <nd ref="30"/><nd ref="31"/>
+    <tag k="railway" v="narrow_gauge"/><tag k="tunnel" v="yes"/>
+  </way>
+  <way id="106" version="1">
+    <nd ref="32"/><nd ref="33"/>
+    <tag k="railway" v="rail"/><tag k="tunnel" v="yes"/><tag k="name" v="Kurztunnel"/>
+  </way>
+  <way id="107" version="1">
+    <nd ref="1"/><nd ref="40"/>
+    <tag k="railway" v="rail"/><tag k="service" v="siding"/>
+  </way>
+  <way id="110" version="1">
+    <nd ref="50"/><nd ref="51"/>
+    <tag k="aerialway" v="cable_car"/><tag k="name" v="Testbahn"/>
+  </way>
+  <way id="111" version="1">
+    <nd ref="51"/><nd ref="52"/>
+    <tag k="aerialway" v="t-bar"/>
+  </way>
+  <way id="120" version="1">
+    <nd ref="60"/><nd ref="61"/><nd ref="62"/><nd ref="63"/><nd ref="60"/>
+    <tag k="natural" v="water"/><tag k="name" v="Testsee"/>
+  </way>
+  <way id="121" version="1">
+    <nd ref="64"/><nd ref="65"/><nd ref="66"/><nd ref="64"/>
+    <tag k="natural" v="water"/>
+  </way>
+  <way id="130" version="1">
+    <nd ref="70"/><nd ref="71"/>
+    <tag k="highway" v="motorway"/>
+  </way>
+  <way id="131" version="1">
+    <nd ref="70"/><nd ref="71"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>

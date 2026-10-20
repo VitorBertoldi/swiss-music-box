@@ -1,0 +1,8 @@
+route_id,service_id,trip_id,trip_headsign
+R_IC,S_ALL,T1_ic,Gamma
+R_IC,S_MON,T2_monday_only,Gamma
+R_BUS,S_REMOVED,T3_removed,Beta
+R_BUS,S_ADDED,T4_night_bus,Gamma
+R_CAB,S_ALL,T5_cable_frequency,Beta
+R_TAXI,S_ALL,T6_taxi,Beta
+R_IC,S_ALL,T7_to_praha,Praha

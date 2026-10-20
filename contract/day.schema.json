@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "Bounds": {
+      "additionalProperties": false,
+      "description": "Extent of the map in LV95 metres.",
+      "properties": {
+        "min_easting_m": {
+          "type": "number"
+        },
+        "max_easting_m": {
+          "type": "number"
+        },
+        "min_northing_m": {
+          "type": "number"
+        },
+        "max_northing_m": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "min_easting_m",
+        "max_easting_m",
+        "min_northing_m",
+        "max_northing_m"
+      ],
+      "title": "Bounds",
+      "type": "object"
+    },
+    "NoteEvents": {
+      "additionalProperties": false,
+      "description": "Departures of sparse layers, stored column-wise to keep the file small.\n\nRow i is: at `minute[i]`, a vehicle of `layer[i]` departs from `stations[station[i]]`.",
+      "properties": {
+        "minute": {
+          "description": "Minute of day, 0..1439 (service after 24:00 wraps)",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "station": {
+          "description": "Index into Day.stations",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "layer": {
+          "items": {
+            "enum": [
+              "long_rail",
+              "mountain_rail",
+              "boat",
+              "aerial",
+              "funicular"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "trip_start": {
+          "description": "True if this is the first stop of its trip",
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "minute",
+        "station",
+        "layer",
+        "trip_start"
+      ],
+      "title": "NoteEvents",
+      "type": "object"
+    },
+    "Station": {
+      "additionalProperties": false,
+      "description": "A parent station that emits note events.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "easting_m": {
+          "type": "number"
+        },
+        "northing_m": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "elevation_m": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "easting_m",
+        "northing_m",
+        "longitude",
+        "latitude",
+        "elevation_m"
+      ],
+      "title": "Station",
+      "type": "object"
+    },
+    "TextureSeries": {
+      "additionalProperties": false,
+      "description": "Departure counts of a dense layer, per minute and per west-to-east bin.",
+      "properties": {
+        "layer": {
+          "enum": [
+            "regional_rail",
+            "tram",
+            "bus"
+          ],
+          "type": "string"
+        },
+        "counts": {
+          "description": "counts[minute][bin], bins ordered west to east",
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "layer",
+        "counts"
+      ],
+      "title": "TextureSeries",
+      "type": "object"
+    },
+    "TunnelSeries": {
+      "additionalProperties": false,
+      "description": "How many trains are inside a long OSM tunnel at each minute of the day.",
+      "properties": {
+        "id": {
+          "description": "Matches Motion.tunnels[].id",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "easting_m": {
+          "type": "number"
+        },
+        "northing_m": {
+          "type": "number"
+        },
+        "occupancy": {
+          "description": "occupancy[minute], length MINUTES_PER_DAY",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "easting_m",
+        "northing_m",
+        "occupancy"
+      ],
+      "title": "TunnelSeries",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Everything the player needs to perform one service day.",
+  "properties": {
+    "schema_version": {
+      "const": 3,
+      "default": 3,
+      "type": "integer"
+    },
+    "service_date": {
+      "description": "ISO date, e.g. 2026-10-21",
+      "type": "string"
+    },
+    "source": {
+      "description": "Feed the day was built from",
+      "type": "string"
+    },
+    "minutes_per_day": {
+      "const": 1440,
+      "default": 1440,
+      "type": "integer"
+    },
+    "texture_bins": {
+      "type": "integer"
+    },
+    "bounds": {
+      "$ref": "#/$defs/Bounds"
+    },
+    "stations": {
+      "items": {
+        "$ref": "#/$defs/Station"
+      },
+      "type": "array"
+    },
+    "notes": {
+      "$ref": "#/$defs/NoteEvents"
+    },
+    "textures": {
+      "items": {
+        "$ref": "#/$defs/TextureSeries"
+      },
+      "type": "array"
+    },
+    "tunnels": {
+      "items": {
+        "$ref": "#/$defs/TunnelSeries"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "service_date",
+    "source",
+    "minutes_per_day",
+    "texture_bins",
+    "bounds",
+    "stations",
+    "notes",
+    "textures",
+    "tunnels"
+  ],
+  "title": "Day",
+  "type": "object"
+}

@@ -1,0 +1,24 @@
+{
+  "additionalProperties": false,
+  "description": "Binary map assets (vector tiles or label glyphs) packed into one JSON file.\n\nSome static hosts only serve common web file types; protobuf tiles and glyphs are not\namong them. The player reads entries from bundles through a `bundle://` map protocol.",
+  "properties": {
+    "schema_version": {
+      "const": 3,
+      "default": 3,
+      "type": "integer"
+    },
+    "entries": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Entry name (e.g. 'x/y') -> base64 bytes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "entries"
+  ],
+  "title": "AssetBundle",
+  "type": "object"
+}

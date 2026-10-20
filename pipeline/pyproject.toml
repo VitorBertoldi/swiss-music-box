@@ -1,0 +1,65 @@
+[project]
+name = "smb-pipeline"
+version = "0.1.0"
+description = "Swiss Music Box: turns the Swiss GTFS timetable into a typed day file for the music player."
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.5",
+    "httpx>=0.27",
+    "imagecodecs>=2026.10.10",
+    "numpy>=2.5.4",
+    "osmium>=4.3.2",
+    "pillow>=13.0.0",
+    "pmtiles>=3.8.1",
+    "pydantic>=2.8",
+    "scipy>=1.18.1",
+    "shapely>=2.2.0",
+    "tifffile>=2026.10.15",
+    "typer>=0.12",
+]
+
+[project.scripts]
+smb = "smb_pipeline.cli:app"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
+    "scipy-stubs>=1.18.1.1",
+    "types-shapely>=2.1.0.20260728",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/smb_pipeline"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "SIM", "RUF", "ANN", "PTH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["duckdb.*"]
+ignore_missing_imports = true
+
+# pmtiles ships without type hints; only this adapter module calls it.
+[[tool.mypy.overrides]]
+module = ["smb_pipeline.map_assets", "test_map_assets"]
+disallow_untyped_calls = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
