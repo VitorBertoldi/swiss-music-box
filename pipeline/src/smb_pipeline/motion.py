@@ -9,6 +9,7 @@ import duckdb
 
 from smb_pipeline.contract import (
     MINUTES_PER_DAY,
+    LeadIn,
     Legs,
     Motion,
     MovingLayer,
@@ -18,6 +19,7 @@ from smb_pipeline.contract import (
     TunnelPassage,
 )
 from smb_pipeline.geo import Place, flat_lonlat, simplify_indices
+from smb_pipeline.lead_ins import LeadInBuilder, starts_new_run
 from smb_pipeline.network import Tunnel as NetworkTunnel
 from smb_pipeline.routing import RoutedPath, StopPair, straight_path
 
@@ -28,6 +30,7 @@ SECONDS_PER_MINUTE: Final = 60
 PRECISE_TOLERANCE_M: Final = 1.0
 # The country-wide view shows Switzerland at ~90 m per pixel; 15 m is far below that.
 OVERVIEW_TOLERANCE_M: Final = 15.0
+NO_LEAD_IN: Final = -1
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,9 +95,22 @@ def build_motion(
     legs: Sequence[LegRow],
     paths: Mapping[SegmentKey, RoutedPath],
     tunnels: Sequence[NetworkTunnel],
+    lead_ins: LeadInBuilder,
 ) -> Motion:
     """Lays every trip's legs onto the routed paths (from `route_unique_pairs`)."""
     segment_index = {pair_key: index for index, pair_key in enumerate(paths)}
+    lead_in_places: list[list[Place]] = []
+    lead_in_of_start: dict[tuple[int, bool], int] = {}
+    lead_in_column: list[int] = []
+
+    def lead_in_for(segment: int, is_reversed: bool, path: RoutedPath) -> int:
+        """The lead-in of a run starting with this segment, shared by all runs that do."""
+        if (segment, is_reversed) not in lead_in_of_start:
+            points = _in_travel_order(path.points, is_reversed)
+            nodes = _in_travel_order(list(path.nodes), is_reversed) if path.route == "track" else []
+            lead_in_of_start[(segment, is_reversed)] = len(lead_in_places)
+            lead_in_places.append(lead_ins.lead_in(points, nodes))
+        return lead_in_of_start[(segment, is_reversed)]
 
     trip_layers: list[MovingLayer] = []
     first_legs: list[int] = []
@@ -112,8 +128,16 @@ def build_motion(
         trip_layers.append(trip_legs[0].layer)
         first_legs.append(len(segment_column))
         leg_counts.append(len(trip_legs))
+        previous_points: list[Place] = []
         for leg in trip_legs:
             key, is_reversed = segment_key(leg)
+            path = paths[key]
+            points = _in_travel_order(path.points, is_reversed)
+            starts_run = starts_new_run(previous_points, points)
+            lead_in_column.append(
+                lead_in_for(segment_index[key], is_reversed, path) if starts_run else NO_LEAD_IN
+            )
+            previous_points = points
             segment_column.append(segment_index[key])
             reversed_column.append(is_reversed)
             depart_column.append(leg.depart_minute - shift)
@@ -128,9 +152,18 @@ def build_motion(
             reversed=reversed_column,
             depart_minute=depart_column,
             arrive_minute=arrive_column,
+            lead_in=lead_in_column,
         ),
+        lead_ins=[
+            LeadIn(coordinates=flat_lonlat(simplified(places, PRECISE_TOLERANCE_M)))
+            for places in lead_in_places
+        ],
         tunnels=[_contract_tunnel(tunnel) for tunnel in tunnels],
     )
+
+
+def _in_travel_order[T](items: Sequence[T], is_reversed: bool) -> list[T]:
+    return list(reversed(items)) if is_reversed else list(items)
 
 
 def tunnel_occupancy(motion: Motion) -> list[list[int]]:

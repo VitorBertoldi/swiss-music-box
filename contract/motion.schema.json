@@ -1,5 +1,23 @@
 {
   "$defs": {
+    "LeadIn": {
+      "additionalProperties": false,
+      "description": "The track behind the start of a run, where a waiting train's rear cars stand.",
+      "properties": {
+        "coordinates": {
+          "description": "Flat [longitude, latitude, ...] in travel order, ending where the run starts",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "coordinates"
+      ],
+      "title": "LeadIn",
+      "type": "object"
+    },
     "Legs": {
       "additionalProperties": false,
       "description": "Column-wise: leg i travels `segments[segment[i]]` (backwards if `reversed`).",
@@ -28,13 +46,21 @@
             "type": "integer"
           },
           "type": "array"
+        },
+        "lead_in": {
+          "description": "Index into Motion.lead_ins where this leg starts a run (the trip's first leg, after a reversal or a gap), else -1",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
         }
       },
       "required": [
         "segment",
         "reversed",
         "depart_minute",
-        "arrive_minute"
+        "arrive_minute",
+        "lead_in"
       ],
       "title": "Legs",
       "type": "object"
@@ -185,8 +211,8 @@
   "description": "How every moving vehicle travels on one service day.",
   "properties": {
     "schema_version": {
-      "const": 3,
-      "default": 3,
+      "const": 4,
+      "default": 4,
       "type": "integer"
     },
     "service_date": {
@@ -204,6 +230,12 @@
     "legs": {
       "$ref": "#/$defs/Legs"
     },
+    "lead_ins": {
+      "items": {
+        "$ref": "#/$defs/LeadIn"
+      },
+      "type": "array"
+    },
     "tunnels": {
       "items": {
         "$ref": "#/$defs/Tunnel"
@@ -217,6 +249,7 @@
     "segments",
     "trips",
     "legs",
+    "lead_ins",
     "tunnels"
   ],
   "title": "Motion",

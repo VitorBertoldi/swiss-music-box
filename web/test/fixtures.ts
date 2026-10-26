@@ -12,7 +12,7 @@ export function makeDay(noteRows: readonly NoteRow[]): Day {
 	occupancy.fill(2, 600, 620);
 	const busCounts = Array.from({ length: MINUTES_PER_DAY }, (_, minute) => (minute === 480 ? [10, 0, 5] : [0, 0, 0]));
 	return {
-		schema_version: 3,
+		schema_version: 4,
 		service_date: "2026-10-21",
 		source: "test",
 		minutes_per_day: 1440,
@@ -77,6 +77,9 @@ export const LONGITUDE_PER_5_KM = 5000 / ((6_371_008.8 * Math.cos((BERN[1] * Mat
  * two trips: an IC runs it eastwards 08:00-08:10 then back 08:15-08:25; an S-Bahn starts at
  * 23:55 and arrives after midnight.
  */
+/** 500 m of longitude at Bern: the length of a lead-in. */
+export const LEAD_IN_LONGITUDE = LONGITUDE_PER_5_KM / 10;
+
 export function makeMotion(): Motion {
 	const [longitude, latitude] = BERN;
 	const coordinates = [
@@ -88,7 +91,7 @@ export function makeMotion(): Motion {
 		latitude,
 	];
 	return {
-		schema_version: 3,
+		schema_version: 4,
 		service_date: "2026-10-21",
 		segments: [
 			{
@@ -105,7 +108,13 @@ export function makeMotion(): Motion {
 			reversed: [false, true, false],
 			depart_minute: [480, 495, 1435],
 			arrive_minute: [490, 505, 1445],
+			// The IC's run starts west of Bern and, after it reverses, east of the 10 km point.
+			lead_in: [0, 1, 0],
 		},
+		lead_ins: [
+			{ coordinates: [longitude - LEAD_IN_LONGITUDE, latitude] },
+			{ coordinates: [longitude + 2 * LONGITUDE_PER_5_KM + LEAD_IN_LONGITUDE, latitude] },
+		],
 		tunnels: [
 			{
 				id: "test-tunnel",

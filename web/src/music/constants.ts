@@ -1,7 +1,7 @@
 import type { MidiNote, NoteLayer, TextureLayer, Zone } from "./types";
 
 export const MINUTES_PER_DAY = 1440;
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** At the reference length a timetable minute lasts exactly one 16th note at 120 BPM. */
 export const REFERENCE_DURATION_S = 180;

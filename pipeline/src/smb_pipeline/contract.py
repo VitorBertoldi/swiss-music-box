@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
-SCHEMA_VERSION: Final = 3
+SCHEMA_VERSION: Final = 4
 MINUTES_PER_DAY: Final = 1440
 
 NoteLayer = Literal["long_rail", "mountain_rail", "boat", "aerial", "funicular"]
@@ -110,7 +110,7 @@ class TunnelSeries(_Model):
 class Day(_Model):
     """Everything the player needs to perform one service day."""
 
-    schema_version: Literal[3] = SCHEMA_VERSION
+    schema_version: Literal[4] = SCHEMA_VERSION
     service_date: str = Field(description="ISO date, e.g. 2026-10-21")
     source: str = Field(description="Feed the day was built from")
     minutes_per_day: Literal[1440] = MINUTES_PER_DAY
@@ -169,6 +169,12 @@ class Legs(_Model):
     reversed: list[bool]
     depart_minute: list[int] = Field(description="May exceed 1440 for trips past midnight")
     arrive_minute: list[int]
+    lead_in: list[int] = Field(
+        description=(
+            "Index into Motion.lead_ins where this leg starts a run (the trip's first leg, "
+            "after a reversal or a gap), else -1"
+        )
+    )
 
     @model_validator(mode="after")
     def _columns_have_equal_length(self) -> Self:
@@ -178,9 +184,18 @@ class Legs(_Model):
                 "reversed": self.reversed,
                 "depart_minute": self.depart_minute,
                 "arrive_minute": self.arrive_minute,
+                "lead_in": self.lead_in,
             }
         )
         return self
+
+
+class LeadIn(_Model):
+    """The track behind the start of a run, where a waiting train's rear cars stand."""
+
+    coordinates: list[float] = Field(
+        description="Flat [longitude, latitude, ...] in travel order, ending where the run starts"
+    )
 
 
 class Tunnel(_Model):
@@ -195,11 +210,12 @@ class Tunnel(_Model):
 class Motion(_Model):
     """How every moving vehicle travels on one service day."""
 
-    schema_version: Literal[3] = SCHEMA_VERSION
+    schema_version: Literal[4] = SCHEMA_VERSION
     service_date: str
     segments: list[Segment]
     trips: Trips
     legs: Legs
+    lead_ins: list[LeadIn]
     tunnels: list[Tunnel]
 
 
@@ -209,7 +225,7 @@ class Motion(_Model):
 class Relief(_Model):
     """A shaded-relief image, Web-Mercator aligned, transparent outside Switzerland."""
 
-    schema_version: Literal[3] = SCHEMA_VERSION
+    schema_version: Literal[4] = SCHEMA_VERSION
     image: str = Field(description="PNG file name, next to this file")
     west: float = Field(description="Longitude of the left edge")
     south: float = Field(description="Latitude of the bottom edge")
@@ -228,7 +244,7 @@ class AssetBundle(_Model):
     among them. The player reads entries from bundles through a `bundle://` map protocol.
     """
 
-    schema_version: Literal[3] = SCHEMA_VERSION
+    schema_version: Literal[4] = SCHEMA_VERSION
     entries: dict[str, str] = Field(description="Entry name (e.g. 'x/y') -> base64 bytes")
 
 

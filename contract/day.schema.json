@@ -178,8 +178,8 @@
   "description": "Everything the player needs to perform one service day.",
   "properties": {
     "schema_version": {
-      "const": 3,
-      "default": 3,
+      "const": 4,
+      "default": 4,
       "type": "integer"
     },
     "service_date": {

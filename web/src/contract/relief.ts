@@ -4,7 +4,7 @@
  * A shaded-relief image, Web-Mercator aligned, transparent outside Switzerland.
  */
 export interface Relief {
-  schema_version: 3;
+  schema_version: 4;
   /**
    * PNG file name, next to this file
    */

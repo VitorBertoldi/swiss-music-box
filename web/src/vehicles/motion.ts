@@ -1,6 +1,6 @@
 import { distanceM, headingDeg, type LonLat } from "../render/lonLat";
+import { PathMeasure } from "../render/pathMeasure";
 import type { VehicleState } from "../render/vehicleTimeline";
-import { PathMeasure } from "./pathMeasure";
 
 /** Where one solid part of a vehicle stands (a train car, a hull, a cabin). */
 export interface Placement {

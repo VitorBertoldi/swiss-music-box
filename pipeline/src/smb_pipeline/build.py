@@ -20,6 +20,7 @@ from smb_pipeline.contract import (
 )
 from smb_pipeline.elevation import ElevationProvider
 from smb_pipeline.geo import SWITZERLAND, WGS84_DECIMALS, Place
+from smb_pipeline.lead_ins import LeadInBuilder
 from smb_pipeline.motion import (
     LegRow,
     Router,
@@ -129,7 +130,9 @@ def _motion(
         pairs=Counter((layer, path.route) for (_, _, layer), path in paths.items()),
         outside_extract=_pairs_outside_extract(legs, paths),
     )
-    motion = build_motion(service_date.isoformat(), legs, paths, rail_graph.tunnels)
+    motion = build_motion(
+        service_date.isoformat(), legs, paths, rail_graph.tunnels, LeadInBuilder(rail_graph)
+    )
     return motion, report
 
 

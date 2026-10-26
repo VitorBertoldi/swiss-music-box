@@ -4,7 +4,7 @@
  * Everything the player needs to perform one service day.
  */
 export interface Day {
-  schema_version: 3;
+  schema_version: 4;
   /**
    * ISO date, e.g. 2026-10-21
    */

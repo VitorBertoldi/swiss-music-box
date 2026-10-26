@@ -16,6 +16,9 @@ from scipy.spatial import cKDTree
 from smb_pipeline.geo import FloatArray, Place, Point
 from smb_pipeline.osm import OsmLine
 
+# A train can't turn sharper than this between two pieces of track; a walk along the track
+# follows the straightest branch at a switch and stops where only sharper turns remain.
+MAX_TRACK_TURN_DEG: Final = 30.0
 LONG_TUNNEL_MIN_LENGTH_M: Final = 3_000  # shorter tunnels pass in a blink at 8 min/s
 TUBE_MERGE_DISTANCE_M: Final = 1_000
 
@@ -47,6 +50,42 @@ class NetworkGraph:
 
     def tunnel_on_edge(self, node_a: int, node_b: int) -> int | None:
         return self.edge_tunnel.get((min(node_a, node_b), max(node_a, node_b)))
+
+    def neighbours(self, node: int) -> list[int]:
+        start, end = self.lengths.indptr[node], self.lengths.indptr[node + 1]
+        return [int(neighbour) for neighbour in self.lengths.indices[start:end]]
+
+    def track_behind(self, start: int, ahead: int, length_m: float) -> list[int]:
+        """Nodes of the track continuing behind `start`, away from `ahead`, nearest first.
+
+        Follows the straightest branch at every switch, for about `length_m`, and stops early
+        at a dead end (a buffer stop) or where the track would turn too sharply.
+        """
+        min_alignment = math.cos(math.radians(MAX_TRACK_TURN_DEG))
+        nodes: list[int] = []
+        previous, current, walked_m = ahead, start, 0.0
+        while walked_m < length_m:
+            heading = self._direction(previous, current)
+            best, best_alignment = None, min_alignment
+            for neighbour in self.neighbours(current):
+                if neighbour == previous:
+                    continue
+                direction = self._direction(current, neighbour)
+                alignment = heading[0] * direction[0] + heading[1] * direction[1]
+                if alignment > best_alignment:
+                    best, best_alignment = neighbour, alignment
+            if best is None:
+                break
+            walked_m += math.dist(self.place_of(current).lv95, self.place_of(best).lv95)
+            nodes.append(best)
+            previous, current = current, best
+        return nodes
+
+    def _direction(self, from_node: int, to_node: int) -> Point:
+        east = float(self.node_eastings[to_node] - self.node_eastings[from_node])
+        north = float(self.node_northings[to_node] - self.node_northings[from_node])
+        length = math.hypot(east, north) or 1.0
+        return east / length, north / length
 
     def place_of(self, node: int) -> Place:
         return Place(

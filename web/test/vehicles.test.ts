@@ -2,10 +2,10 @@ import type { Layer } from "@deck.gl/core";
 import { describe, expect, it } from "vitest";
 import { distanceM, headingDeg, type LonLat, offsetLonLat } from "../src/render/lonLat";
 import { SCREEN_PALETTE } from "../src/render/palette";
+import { PathMeasure } from "../src/render/pathMeasure";
 import { type VehicleState, VehicleTimeline } from "../src/render/vehicleTimeline";
 import { CABLE, cablePath } from "../src/vehicles/cableCarKind";
 import { CarsAlongTrack, cableHeightM, HangingFromCable, SingleHull } from "../src/vehicles/motion";
-import { PathMeasure } from "../src/vehicles/pathMeasure";
 import { MOVING_LAYERS, standardVehicleKinds, VehicleKindRegistry } from "../src/vehicles/registry";
 import { Box, Hull } from "../src/vehicles/shape";
 import { carsIn, INTERCITY_CAR, TrainKind } from "../src/vehicles/trainKind";
@@ -17,7 +17,10 @@ const east = (metres: number): LonLat => offsetLonLat(BERN, metres, 0);
 /** A vehicle heading east from Bern whose body is the last `bodyM` metres before its head. */
 function vehicleEast(bodyM: number, overrides: Partial<VehicleState> = {}): VehicleState {
 	const head = east(1000);
+	const path = new PathMeasure([east(1000 - bodyM), head]);
 	return {
+		path,
+		headM: path.lengthM,
 		trip: 0,
 		layer: "long_rail",
 		head,

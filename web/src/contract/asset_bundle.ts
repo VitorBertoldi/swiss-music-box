@@ -7,7 +7,7 @@
  * among them. The player reads entries from bundles through a `bundle://` map protocol.
  */
 export interface AssetBundle {
-  schema_version: 3;
+  schema_version: 4;
   /**
    * Entry name (e.g. 'x/y') -> base64 bytes
    */

@@ -1,5 +1,5 @@
 import { at } from "../music/collections";
-import { distanceM, headingDeg, type LonLat, lerpLonLat } from "../render/lonLat";
+import { distanceM, headingDeg, type LonLat, lerpLonLat } from "./lonLat";
 
 /** A point on a path and the direction the path runs there. */
 export interface PointOnPath {
@@ -23,6 +23,11 @@ export class PathMeasure {
 		this.lengthM = distances.at(-1) ?? 0;
 	}
 
+	/** Distance from the start to the path's `index`-th point. */
+	distanceAtPoint(index: number): number {
+		return at(this.distancesM, index);
+	}
+
 	/** The point `alongM` metres from the start, clamped to the path's ends. */
 	at(alongM: number): PointOnPath {
 		const first = this.points[0];
@@ -38,6 +43,19 @@ export class PathMeasure {
 			point: lerpLonLat(from, to, end === start ? 0 : (clamped - start) / (end - start)),
 			headingDeg: headingDeg(from, to),
 		};
+	}
+
+	/** The piece of path between two distances, ordered from `fromM` to `toM` (either way round). */
+	stretch(fromM: number, toM: number): LonLat[] {
+		const low = Math.max(0, Math.min(fromM, toM));
+		const high = Math.min(this.lengthM, Math.max(fromM, toM));
+		const points: LonLat[] = [this.at(low).point];
+		for (let i = 0; i < this.points.length; i++) {
+			const distance = at(this.distancesM, i);
+			if (distance > low && distance < high) points.push(at(this.points, i));
+		}
+		points.push(this.at(high).point);
+		return fromM <= toM ? points : points.reverse();
 	}
 
 	/** Index i of the first stretch of non-zero length ending at or after `alongM`. */

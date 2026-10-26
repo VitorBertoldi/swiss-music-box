@@ -4,11 +4,12 @@
  * How every moving vehicle travels on one service day.
  */
 export interface Motion {
-  schema_version: 3;
+  schema_version: 4;
   service_date: string;
   segments: Segment[];
   trips: Trips;
   legs: Legs;
+  lead_ins: LeadIn[];
   tunnels: Tunnel[];
 }
 /**
@@ -63,6 +64,19 @@ export interface Legs {
    */
   depart_minute: number[];
   arrive_minute: number[];
+  /**
+   * Index into Motion.lead_ins where this leg starts a run (the trip's first leg, after a reversal or a gap), else -1
+   */
+  lead_in: number[];
+}
+/**
+ * The track behind the start of a run, where a waiting train's rear cars stand.
+ */
+export interface LeadIn {
+  /**
+   * Flat [longitude, latitude, ...] in travel order, ending where the run starts
+   */
+  coordinates: number[];
 }
 /**
  * A long tunnel found in OpenStreetMap (`tunnel=yes` on rail ways).

@@ -6,7 +6,7 @@ import { chooseTileSource, glyphsUrl, type TileSource, tileUrl } from "../src/ma
 import { SCREEN_PALETTE } from "../src/render/palette";
 
 const relief: Relief = {
-	schema_version: 3,
+	schema_version: 4,
 	image: "relief.png",
 	west: 5.9,
 	south: 45.8,
@@ -52,7 +52,7 @@ describe("asset bundles", () => {
 		const requested: string[] = [];
 		const loader = new AssetBundleLoader(async (url) => {
 			requested.push(url);
-			return { schema_version: 3, entries: { "1/2": btoa("tile") } };
+			return { schema_version: 4, entries: { "1/2": btoa("tile") } };
 		});
 		const tile = await loader.entry({ fileUrl: "zoom-3.json", entry: "1/2" });
 		expect(new TextDecoder().decode(tile ?? new ArrayBuffer(0))).toBe("tile");

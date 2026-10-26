@@ -1,8 +1,12 @@
+import math
+
 import pytest
 from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation
 
 from smb_pipeline.build import build_day
 from smb_pipeline.contract import Motion
+from smb_pipeline.geo import place_from_wgs84
+from smb_pipeline.lead_ins import LEAD_IN_LENGTH_M
 from smb_pipeline.motion import tunnel_occupancy
 
 
@@ -62,3 +66,17 @@ def test_segments_are_stored_in_wgs84_with_an_overview_subset(motion: Motion) ->
         precise = set(zip(longitudes, latitudes, strict=True))
         assert set(overview) <= precise
         assert overview[0] == (longitudes[0], latitudes[0])
+
+
+def test_every_run_starts_with_a_lead_in(motion: Motion) -> None:
+    ic = motion.trips.layer.index("long_rail")
+    first, second = _trip_legs(motion, ic)
+    assert motion.legs.lead_in[first] >= 0
+    assert motion.legs.lead_in[second] == -1
+    assert len(motion.legs.lead_in) == len(motion.legs.segment)
+    lead_in = motion.lead_ins[motion.legs.lead_in[first]].coordinates
+    segment = motion.segments[motion.legs.segment[first]].coordinates
+    start = segment[-2:] if motion.legs.reversed[first] else segment[:2]
+    behind = place_from_wgs84(lead_in[1], lead_in[0])
+    station = place_from_wgs84(start[1], start[0])
+    assert math.dist(behind.lv95, station.lv95) == pytest.approx(LEAD_IN_LENGTH_M, rel=0.01)

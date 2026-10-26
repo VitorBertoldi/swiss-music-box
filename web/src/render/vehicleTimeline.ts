@@ -3,6 +3,8 @@ import { at } from "../music/collections";
 import { MINUTES_PER_DAY } from "../music/constants";
 import { distanceM, type LonLat, lerpLonLat, toLonLats } from "./lonLat";
 import type { MovingLayer } from "./palette";
+import type { PathMeasure } from "./pathMeasure";
+import { TripRuns } from "./tripRuns";
 
 /** Typical length of a vehicle, so that up close a train looks like a train. */
 export const BODY_LENGTH_M: Readonly<Record<MovingLayer, number>> = {
@@ -26,6 +28,9 @@ export interface VehicleState {
 	/** Where it travelled in the last `TAIL_MINUTES` of this leg, oldest point first. */
 	readonly tail: readonly LonLat[];
 	readonly isInsideTunnel: boolean;
+	/** The run the vehicle travels (lead-in and legs as one path), and how far along it its front is. */
+	readonly path: PathMeasure;
+	readonly headM: number;
 	/** Where the current leg starts and ends, in the direction of travel. */
 	readonly legFrom: LonLat;
 	readonly legTo: LonLat;
@@ -52,8 +57,10 @@ export class VehicleTimeline {
 	private readonly shownUntil: Float64Array;
 	private readonly bucketStarts: Int32Array;
 	private readonly bucketLegs: Int32Array;
+	private readonly runs: TripRuns;
 
 	constructor(private readonly motion: Motion) {
+		this.runs = new TripRuns(motion);
 		this.paths = motion.segments.map(preparePath);
 		const legCount = motion.legs.segment.length;
 		this.tripOfLeg = new Int32Array(legCount);
@@ -101,28 +108,33 @@ export class VehicleTimeline {
 		const departure = at(legs.depart_minute, leg);
 		if (time < departure || time > at(this.shownUntil, leg)) return null;
 		const arrival = Math.max(at(legs.arrive_minute, leg), departure);
-		const path = at(this.paths, at(legs.segment, leg));
-		const isReversed = at(legs.reversed, leg);
-		const travelledM = (minute: number): number => path.lengthM * easedProgress(minute, departure, arrival);
-		// Positions along the segment in its stored direction.
-		const forward = (travelled: number): number => (isReversed ? path.lengthM - travelled : travelled);
-
 		const trip = at(this.tripOfLeg, leg);
 		const layer = at(this.motion.trips.layer, trip);
+		// Positions are measured along the trip's run, so the body reaches back over stations.
+		const { run, startM, lengthM } = this.runs.legOnRun(trip, leg);
+		const travelledM = (minute: number): number => startM + lengthM * easedProgress(minute, departure, arrival);
 		const headM = travelledM(time);
-		const rearM = Math.max(0, headM - BODY_LENGTH_M[layer]);
 		const tailStartM = travelledM(Math.max(departure, time - TAIL_MINUTES));
-		const headForwardM = forward(headM);
 		return {
 			trip,
 			layer,
-			head: pointAt(path, headForwardM),
-			body: stretch(path, forward(rearM), headForwardM),
-			tail: stretch(path, forward(tailStartM), headForwardM),
-			isInsideTunnel: path.tunnelSpansM.some(([start, end]) => start <= headForwardM && headForwardM <= end),
-			legFrom: pointAt(path, forward(0)),
-			legTo: pointAt(path, forward(path.lengthM)),
+			path: run.path,
+			headM,
+			head: run.path.at(headM).point,
+			body: run.path.stretch(headM - BODY_LENGTH_M[layer], headM),
+			tail: run.path.stretch(tailStartM, headM),
+			isInsideTunnel: this.isInsideTunnel(leg, lengthM === 0 ? 0 : (headM - startM) / lengthM),
+			legFrom: run.path.at(startM).point,
+			legTo: run.path.at(startM + lengthM).point,
 		};
+	}
+
+	/** Whether the vehicle is in a tunnel, `share` (0..1) of the way along its leg. */
+	private isInsideTunnel(leg: number, share: number): boolean {
+		const legs = this.motion.legs;
+		const path = at(this.paths, at(legs.segment, leg));
+		const alongSegmentM = (at(legs.reversed, leg) ? 1 - share : share) * path.lengthM;
+		return path.tunnelSpansM.some(([start, end]) => start <= alongSegmentM && alongSegmentM <= end);
 	}
 
 	private *legsAround(time: number): Generator<number> {

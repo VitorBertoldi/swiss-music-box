@@ -54,6 +54,8 @@ class RoutedPath:
     length_m: float
     route: RouteKind
     tunnel_spans: list[TunnelSpan]
+    nodes: tuple[int, ...] = ()
+    """Graph nodes along the path, one per point; empty for straight lines."""
 
     @property
     def is_fallback(self) -> bool:
@@ -95,6 +97,10 @@ class NetworkRouter:
         for origin, destinations in destinations_by_origin.items():
             routes.update(self._route_from(origin, destinations, positions))
         return routes
+
+    @property
+    def graph(self) -> NetworkGraph:
+        return self._graph
 
     def covers(self, place: Place) -> bool:
         """Whether the network reaches this place, i.e. it lies inside the OSM extract."""
@@ -157,6 +163,7 @@ class NetworkRouter:
             length_m=float(distances[end_node]),
             route=self._route_kind,
             tunnel_spans=self._tunnel_spans(nodes),
+            nodes=tuple(nodes),
         )
 
     def _snap(self, place: Place) -> list[int]:
