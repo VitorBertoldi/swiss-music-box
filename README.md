@@ -22,12 +22,15 @@ on OSM geometry, stored to the centimetre.
 | `railway=rail / narrow_gauge / funicular` (+ rack) | the **rail graph**: trains and funiculars are routed stop to stop along the real track (Dijkstra, `pipeline/.../routing.py`) |
 | `tunnel=yes` on rail ways | **tunnels**: tubes grouped by name, unnamed ones named after the nearest station. Trains dim while inside; the 8 longest busy tunnels glow and **drone** in the music |
 | `route=ferry` | the **ferry graph**: boats sail real lake routes |
+| `aerialway=cable_car / gondola / chair_lift` + `aerialway=pylon` | the **ropeway graph**: cable cars ride their real rope, over the tops of its pylons (644 drawn), sagging in between |
+| `bridge=*` on rail ways | **heights**: track runs level across bridges instead of dipping into the valley below |
 | `boundary=administrative` + `ISO3166-1=CH` | the mask that cuts the relief to Switzerland's shape |
 
 Routing coverage on 21 Oct 2026: 100 % of IC/IR stop pairs and 98 % of regional and mountain rail
-pairs inside Switzerland follow OSM track; the rest (mostly funiculars) are straight lines.
-Stations beyond the extract (German shore of Lake Constance, …) leave the map at the border.
-The relief is Copernicus GLO-90 (not OSM), cached under `data/cache/dem`.
+pairs inside Switzerland follow OSM track, and 165 of 172 cable-car pairs their OSM rope; the rest
+are straight lines. Stations beyond the extract (German shore of Lake Constance, …) leave the map
+at the border. The relief and the 3D terrain are Copernicus GLO-90 (not OSM), cached under
+`data/cache/dem`.
 
 ## Zooming in
 
@@ -36,9 +39,26 @@ switches the camera to **free**. Vehicles are computed every frame from the exac
 geometry: a train has a body of its real length (an IC ~400 m), eases in and out of stations,
 waits at platforms and disappears into tunnels.
 
-From zoom 14 each kind of vehicle is drawn as what it is (`web/src/vehicles/`): trains as a row of
-3D cars that bends with the track, boats as a hull with a wake, cable cars as a cabin hanging from
-a sagging cable, funiculars as one long car. Further out they stay dots with trails.
+**In 3D.** Locally the map stands on the Copernicus terrain (key **E** lays it flat again; the
+shared link is always flat). Every path has heights (`pipeline/.../heights.py`): track follows
+the smoothed ground, runs level across bridges and straight through tunnels, and never sinks
+below the drawn ground; boats float at the lake's level; ropes hang from pylon to pylon.
+
+From zoom 14 each kind of vehicle is drawn as what it is (`web/src/vehicles/`), at its real size:
+
+| Kind | Model (built in code, `vehicles/models/catalogue.ts`) | Moves |
+|---|---|---|
+| IC / IR | Re 460 locomotive + IC2000 double-deck coaches | each car on two bogies: turns and tilts with the track |
+| S-Bahn | double-deck cab car + cars | as above |
+| mountain railway, funicular | metre-gauge cars; one long glazed car | as above, steeply |
+| boat | lake ship: hull, saloons, wheelhouse, funnel, and a wake | rocks gently on the lake |
+| cable car | aerial tramway cabin, gondola or chair (by OSM's ropeway type) | hangs from its rope |
+
+Trains keep their full length through every station: a trip is laid out as continuous runs,
+each starting on a *lead-in* of real track behind its first station. Seen from further out, a
+model becomes a box (from about zoom 15.5 down) drawn wider than it is so it stays visible;
+below zoom 14 vehicles are dots with trails. A Blender model can replace any of them:
+see `web/public/models/README.md`.
 
 A view can be shared as a link: `?view=longitude,latitude,zoom,pitch,bearing`, e.g.
 
@@ -54,8 +74,9 @@ detects that and falls back to bundled overview tiles (zoom ≤ 10, `make overvi
 
 ```
 GTFS ─┐                                     ┌─ <date>.json         sound: notes, textures, tunnel drones
-OSM  ─┼─► pipeline/ (Python, DuckDB, ───────┼─ motion-<date>.json  every vehicle on OSM paths (WGS84, 1 cm)
+OSM  ─┼─► pipeline/ (Python, DuckDB, ───────┼─ motion-<date>.json  every vehicle on OSM paths, with heights
 DEM  ─┘    pyosmium, scipy)                 ├─ relief.json + PNG   shaded relief, Web-Mercator aligned
+                                            ├─ terrain/*.pmtiles   3D terrain (Terrarium PNG tiles)
 OSM  ───► Planetiler (Java) ────────────────┴─ tiles/switzerland.pmtiles   the street map
                                                      │  contract/ (Pydantic → JSON Schema → TS types)
                                                      ▼
@@ -72,7 +93,8 @@ Design patterns, where they earn their place:
 |---|---|
 | Pipeline of named steps + **Facade** | `smb build` / `smb relief` → `build_day`, `build_relief` |
 | **Adapter** | `osm.py` (the only module that touches pyosmium); `map/mapView.ts` (the only one that touches MapLibre); `ScoreSink` outputs (Tone, Web MIDI, .mid) |
-| **Strategy** + composition | `VehicleKind` (`TrainKind`, `BoatKind`, `CableCarKind`), each built from a `MotionModel` (where its parts stand) and a `Shape` (what they look like) |
+| **Strategy** + composition | `VehicleKind` (`TrainKind`, `BoatKind`, `CableCarKind`): one per kind of vehicle, never one per vehicle, each composed of a `MotionModel` (`CarsAlongTrack`, `HullOnWater`, `HangingFromCable`: where its parts stand, as `Pose3D`) and a `LevelOfDetail` choosing a `VehicleModel` (`MeshModel` built in code, `BoxModel`, `GltfModel` for Blender) |
+| **Strategy** | `Elevation` (`FLAT_MAP` / `TERRAIN`): the same vehicles, trails and flashes on the flat map and on the 3D terrain |
 | **Strategy** | `Scene`, `CameraMode` (overview/tour/follow/free), `TileSource` (pmtiles/bundle), `Palette` (screen/projector), `PitchMapping`, `ElevationProvider` / `HeightModel` |
 | **Builder** | `NetworkGraphBuilder` (OSM ways → graph), `buildStyle` (MapLibre style), `VehicleTrackBuilder` (motion → GPU tracks) |
 | **Registry** | `SceneRegistry`: one list of scenes, numbered like their keys; `VehicleKindRegistry`: one kind per moving layer, checked at start-up |
@@ -82,7 +104,8 @@ Design patterns, where they earn their place:
 
 Keys: **Space** play · **1** living map · **2** long exposure · **3** calibration ·
 **O** overview · **T** camera tour · **G** follow a train · **M** free camera ·
-**P** projector mode (no UI, no cursor, 16:9 letterbox, brighter map) · **H** hide panel · **F** fullscreen.
+**P** projector mode (no UI, no cursor, 16:9 letterbox, brighter map) · **E** 3D terrain on/off ·
+**H** hide panel · **F** fullscreen.
 
 In the room: open scene 3 first. The grid shows focus and keystone, the ramps show black level and
 colour, and the read-out gives the real resolution and frame rate. `make smoke` renders every scene and
@@ -95,9 +118,10 @@ Needs `uv`, Node ≥ 22, Java 25 (for Planetiler) and `make`.
 ```sh
 make setup        # Python + Node dependencies
 make data         # downloads GTFS + OSM (+ ~1 GB of Planetiler sources once), builds everything (~5 min)
+make terrain      # just the 3D terrain tiles (part of make data; 684 tiles, 81 MB, seconds)
 make dev          # open the printed URL in Chrome, press Space
 make check        # ruff, mypy --strict, pytest, biome, tsc --strict, vitest: what CI runs
-make smoke        # screenshots of every scene and street views at 1080p and 4K
+make smoke        # screenshots of every scene and street views at 1080p and 4K (SMOKE_ONLY=kind- for some)
 make overview     # bundled low-zoom tiles for hosts without range requests (the shared link)
 ```
 
@@ -139,10 +163,13 @@ Uncheck *Browser synth* when Ableton makes the sound.
 
 - Speed along a leg follows the timetable with eased starts and stops, not real acceleration curves.
 - The tunnel glow is drawn along the tunnel's axis (portal to portal), not its exact curve.
-- The map is flat, so cable cars hang at a fixed 60 m above it instead of climbing the mountain, and
-  funiculars are not tilted; both need 3D terrain.
+- The terrain is a 90 m surface model (it includes buildings and forest), so embankments and
+  cuttings are smoothed and track in towns sits a few metres high; swisstopo's swissALTI3D (2 m)
+  would fix both behind the same interface.
+- Models are recognisable low-poly ones built in code; Blender models can replace them one by one.
+- OSM tags almost no pylon heights, so pylons use a typical height per ropeway type.
+- Light is fixed; a sun that follows the timetable clock (deck.gl `SunLight`) and sky/fog for
+  tilted views were planned as an optional, artistic step.
 - Buses and trams are sound textures only; moving them on OSM streets is the natural next step.
-- 3D terrain (stretch goal): MapLibre can drape the map over a DEM (`raster-dem` source) so mountains
-  rise and cable cars climb; the relief image would become terrain tiles.
 - Real delays (opentransportdata.swiss *Ist-Daten*) as detune or dissonance; Sunday vs weekday; live GTFS-RT.
 - Browser MIDI scheduling looks 150 ms ahead, so pausing can leave a few already-sent notes.
