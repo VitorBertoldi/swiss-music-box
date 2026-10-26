@@ -5,7 +5,7 @@ import type { MovingLayer } from "../render/palette";
 import type { VehicleState } from "../render/vehicleTimeline";
 import { BoatKind } from "./boatKind";
 import { CableCarKind } from "./cableCarKind";
-import { FUNICULAR_CAR, INTERCITY_CAR, MOUNTAIN_CAR, S_BAHN_CAR, TrainKind } from "./trainKind";
+import { FUNICULAR, INTERCITY, MOUNTAIN_TRAIN, S_BAHN, TrainKind } from "./trainKind";
 import type { VehicleFrame, VehicleKind } from "./vehicleKind";
 
 export const MOVING_LAYERS: readonly MovingLayer[] = [
@@ -20,10 +20,10 @@ export const MOVING_LAYERS: readonly MovingLayer[] = [
 /** The kinds the player uses: one per moving layer. */
 export function standardVehicleKinds(): VehicleKind[] {
 	return [
-		new TrainKind("long_rail", INTERCITY_CAR),
-		new TrainKind("regional_rail", S_BAHN_CAR),
-		new TrainKind("mountain_rail", MOUNTAIN_CAR),
-		new TrainKind("funicular", FUNICULAR_CAR),
+		new TrainKind("long_rail", INTERCITY),
+		new TrainKind("regional_rail", S_BAHN),
+		new TrainKind("mountain_rail", MOUNTAIN_TRAIN),
+		new TrainKind("funicular", FUNICULAR),
 		new BoatKind(),
 		new CableCarKind(),
 	];

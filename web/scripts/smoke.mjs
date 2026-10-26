@@ -35,9 +35,9 @@ const SHOTS = [
 	{ name: "kind-ic-train", view: "8.49324,47.39049,16.5,60,-70", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-ic-train-z15-top", view: "8.49324,47.39049,15,0,0", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-ic-train-flat", view: "8.49324,47.39049,16.5,60,-70", keys: ["1", "e"], minute: 728, still: true },
-	{ name: "kind-ic-train-z17", view: "8.4885,47.3915,17.5,55,-70", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-ic-train-z18", view: "8.49324,47.39049,18.5,62,-40", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-boat", view: "8.54956,47.33436,16.5,55,165", keys: ["1"], minute: 728, still: true },
-	{ name: "kind-cable-car", view: "8.01392,46.62175,16.5,60,-150", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-cable-car", view: "8.01392,46.62175,17.5,65,-150", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-funicular", view: "7.67875,46.64029,17,60,-103", keys: ["1"], minute: 728, still: true },
 ];
 /** `SMOKE_ONLY=kind-` renders only the shots whose name starts with that, for quick iteration. */

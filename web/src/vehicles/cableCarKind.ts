@@ -4,9 +4,11 @@ import type { OverlayProps } from "../map/overlayProps";
 import type { Elevation, LonLatHeight } from "../render/elevation";
 import { distanceM, type LonLat, lerpLonLat } from "../render/lonLat";
 import type { VehicleState } from "../render/vehicleTimeline";
+import { CABIN_ROPE_HEIGHT_M, tramwayCabin } from "./models/catalogue";
+import { BoxModel, LevelOfDetail, MeshModel } from "./models/vehicleModel";
 import { type CableProfile, cableHeightM, HangingFromCable, type MotionModel } from "./motion";
-import { Box, type Corner, type Shape } from "./shape";
-import { minimumWidthM, solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
+import { Box, type Corner } from "./shape";
+import { solidColour, type VehicleFrame, type VehicleKind } from "./vehicleKind";
 
 /**
  * The map is flat (no terrain yet), so cables are drawn at a fixed height above it rather
@@ -14,9 +16,7 @@ import { minimumWidthM, solidColour, solidLayer, solidsOf, type VehicleFrame, ty
  */
 export const CABLE: CableProfile = { stationHeightM: 60, sagPerSpanM: 0.02, maxSagM: 40 };
 /** A large aerial-tramway cabin; gondolas are smaller, but would vanish at this zoom. */
-const CABIN = new Box(10, 5, 4);
-/** The hanger between the cable and the cabin's roof. */
-const HANGER_M = 5;
+const CABIN = tramwayCabin();
 /** Enough points for the sag to look like a curve. */
 const CABLE_POINTS = 24;
 const CABLE_WIDTH_M = 0.6;
@@ -39,8 +39,11 @@ export function cablePath(from: LonLatHeight, to: LonLatHeight, elevation: Eleva
 /** Cable cars: a cabin hanging from its cable, which is drawn too. */
 export class CableCarKind implements VehicleKind {
 	readonly layer = "aerial";
-	private readonly motion: MotionModel = new HangingFromCable(CABLE, HANGER_M + CABIN.heightM);
-	private readonly shape: Shape = CABIN;
+	private readonly motion: MotionModel = new HangingFromCable(CABLE, CABIN_ROPE_HEIGHT_M);
+	private readonly cabin = new LevelOfDetail(
+		new MeshModel(CABIN),
+		new BoxModel(new Box(CABIN.lengthM, CABIN.widthM, CABIN.heightM)),
+	);
 
 	draw(vehicles: readonly VehicleState[], frame: VehicleFrame): Layer[] {
 		return [
@@ -55,15 +58,10 @@ export class CableCarKind implements VehicleKind {
 				opacity: frame.opacity,
 				beforeId: frame.beforeId,
 			}),
-			solidLayer(
+			...this.cabin.choose(frame).model.layers(
 				`${frame.idPrefix}-aerial-cabins`,
-				solidsOf(
-					vehicles,
-					this.motion,
-					this.shape.widened(minimumWidthM(frame)),
-					frame,
-					solidColour(frame.palette, this.layer),
-				),
+				vehicles.flatMap((vehicle) => this.motion.place(vehicle, frame)),
+				solidColour(frame.palette, this.layer),
 				frame,
 			),
 		];

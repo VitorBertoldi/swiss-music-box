@@ -35,6 +35,9 @@ export interface MotionModel {
  */
 export class CarsAlongTrack implements MotionModel {
 	constructor(
+		/** Length of the leading vehicle (a locomotive or driving car). */
+		private readonly leadLengthM: number,
+		/** Length of each car behind it. */
 		private readonly carLengthM: number,
 		private readonly gapM: number,
 		private readonly carCount: number,
@@ -43,11 +46,16 @@ export class CarsAlongTrack implements MotionModel {
 	) {}
 
 	place(vehicle: VehicleState, { elevation }: PoseContext): Pose3D[] {
-		const halfSpacingM = (this.carLengthM * this.bogieSpacingShare) / 2;
 		const poses: Pose3D[] = [];
 		for (let car = 0; car < this.carCount; car++) {
-			const centreM = vehicle.headM - car * (this.carLengthM + this.gapM) - this.carLengthM / 2;
-			if (centreM - this.carLengthM / 2 < 0) break; // no track left behind the run's start
+			const lengthM = car === 0 ? this.leadLengthM : this.carLengthM;
+			const frontM =
+				car === 0
+					? vehicle.headM
+					: vehicle.headM - this.leadLengthM - this.gapM - (car - 1) * (this.carLengthM + this.gapM);
+			const centreM = frontM - lengthM / 2;
+			if (frontM - lengthM < 0) break; // no track left behind the run's start
+			const halfSpacingM = (lengthM * this.bogieSpacingShare) / 2;
 			const front = vehicle.path.at(centreM + halfSpacingM);
 			const rear = vehicle.path.at(centreM - halfSpacingM);
 			const [longitude, latitude] = lerpLonLat(rear.point, front.point, 0.5);

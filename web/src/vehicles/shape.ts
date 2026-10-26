@@ -6,6 +6,7 @@ export type Corner = [longitude: number, latitude: number, heightM: number];
 
 /** What one part of a vehicle looks like: a footprint raised into a solid. */
 export interface Shape {
+	readonly lengthM: number;
 	readonly widthM: number;
 	readonly heightM: number;
 	/** This shape, or a wider and taller copy if it is narrower than `minWidthM`. */
@@ -38,8 +39,11 @@ const MAX_HEIGHT_EXAGGERATION = 2;
 /** A widened shape stays clearly longer than wide, so a train car never turns into a bead. */
 const MAX_WIDTH_PER_LENGTH = 0.6;
 
-/** Width and height of a shape widened towards `minWidthM`; null if it needs no widening. */
-function widenedSize(lengthM: number, widthM: number, heightM: number, minWidthM: number): [number, number] | null {
+/**
+ * Width and height of a part drawn at least `minWidthM` wide, its length kept true (maps draw
+ * roads wider than they are, too); null if it needs no widening.
+ */
+export function widening(lengthM: number, widthM: number, heightM: number, minWidthM: number): [number, number] | null {
 	const width = Math.min(minWidthM, lengthM * MAX_WIDTH_PER_LENGTH);
 	if (width <= widthM) return null;
 	return [width, heightM * Math.min(width / widthM, MAX_HEIGHT_EXAGGERATION)];
@@ -65,7 +69,7 @@ export class Box implements Shape {
 	}
 
 	widened(minWidthM: number): Box {
-		const size = widenedSize(this.lengthM, this.widthM, this.heightM, minWidthM);
+		const size = widening(this.lengthM, this.widthM, this.heightM, minWidthM);
 		return size === null ? this : new Box(this.lengthM, ...size);
 	}
 
@@ -99,7 +103,7 @@ export class Hull implements Shape {
 	}
 
 	widened(minWidthM: number): Hull {
-		const size = widenedSize(this.lengthM, this.widthM, this.heightM, minWidthM);
+		const size = widening(this.lengthM, this.widthM, this.heightM, minWidthM);
 		return size === null ? this : new Hull(this.lengthM, ...size);
 	}
 

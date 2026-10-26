@@ -9,7 +9,7 @@ import { CABLE, cablePath } from "../src/vehicles/cableCarKind";
 import { CarsAlongTrack, cableHeightM, HangingFromCable, HullOnWater, type Pose3D } from "../src/vehicles/motion";
 import { MOVING_LAYERS, standardVehicleKinds, VehicleKindRegistry } from "../src/vehicles/registry";
 import { Box, Hull } from "../src/vehicles/shape";
-import { carsIn, INTERCITY_CAR, TrainKind } from "../src/vehicles/trainKind";
+import { carsIn, INTERCITY, TrainKind } from "../src/vehicles/trainKind";
 import type { VehicleFrame } from "../src/vehicles/vehicleKind";
 import { BERN, makeMotion } from "./fixtures";
 
@@ -99,34 +99,37 @@ describe("shapes", () => {
 });
 
 describe("motion models", () => {
-	const intercity = new CarsAlongTrack(INTERCITY_CAR.lengthM, INTERCITY_CAR.gapM, 14);
+	const COACH_M = INTERCITY.car.lengthM;
+	const LOCO_M = INTERCITY.lead.lengthM;
+	const intercity = new CarsAlongTrack(LOCO_M, COACH_M, INTERCITY.gapM, 14);
 
 	it("fits an IC's cars into the length it occupies on the track", () => {
-		expect(carsIn(400, INTERCITY_CAR)).toBe(14);
+		expect(carsIn(400, INTERCITY)).toBe(14);
 		const cars = intercity.place(vehicleAt(1000), FRAME);
 		expect(cars).toHaveLength(14);
-		expect(distanceM(lonLatOf(cars[0]), east(1000))).toBeCloseTo(INTERCITY_CAR.lengthM / 2, 1);
+		expect(distanceM(lonLatOf(cars[0]), east(1000))).toBeCloseTo(LOCO_M / 2, 1);
+		expect(distanceM(lonLatOf(cars[1]), east(1000))).toBeCloseTo(LOCO_M + INTERCITY.gapM + COACH_M / 2, 1);
 		expect(cars.every((car) => Math.abs(car.yawDeg - 90) < 1e-6 && car.position[2] === 0)).toBe(true);
 	});
 
 	it("never places cars before the start of its run", () => {
-		expect(intercity.place(vehicleAt(100), FRAME)).toHaveLength(3);
+		expect(intercity.place(vehicleAt(100), FRAME)).toHaveLength(3); // the loco and two coaches
 	});
 
 	it("tilts each car with the gradient under its bogies, on the terrain only", () => {
 		const climb = new PathMeasure([BERN, east(1000)], [500, 600]); // 10 %
 		const [car] = intercity.place(vehicleAt(800, climb), ON_TERRAIN);
 		expect(car?.pitchDeg).toBeCloseTo((Math.atan(0.1) * 180) / Math.PI, 1);
-		expect(car?.position[2]).toBeCloseTo(500 + 0.1 * (800 - INTERCITY_CAR.lengthM / 2), 0);
+		expect(car?.position[2]).toBeCloseTo(500 + 0.1 * (800 - LOCO_M / 2), 0);
 		expect(intercity.place(vehicleAt(800, climb), FRAME)[0]?.pitchDeg).toBe(0);
 	});
 
 	it("turns each car with the curve under its bogies", () => {
 		const bend = new PathMeasure([BERN, east(500), north(east(500), 500)]);
-		const [first, second] = intercity.place(vehicleAt(510, bend), FRAME);
+		const [first, , third] = intercity.place(vehicleAt(505, bend), FRAME);
 		expect(first?.yawDeg).toBeGreaterThan(0);
 		expect(first?.yawDeg).toBeLessThan(90);
-		expect(second?.yawDeg).toBeCloseTo(90, 0);
+		expect(third?.yawDeg).toBeCloseTo(90, 0);
 	});
 
 	it("puts a hull's centre half a boat behind its bow, rocking within the swell", () => {
@@ -161,9 +164,9 @@ describe("vehicle kinds", () => {
 	it("needs exactly one kind for every moving layer", () => {
 		expect(() => new VehicleKindRegistry(standardVehicleKinds())).not.toThrow();
 		expect(() => new VehicleKindRegistry(standardVehicleKinds().slice(1))).toThrow(/long_rail/);
-		expect(
-			() => new VehicleKindRegistry([...standardVehicleKinds(), new TrainKind("long_rail", INTERCITY_CAR)]),
-		).toThrow(/two vehicle kinds/);
+		expect(() => new VehicleKindRegistry([...standardVehicleKinds(), new TrainKind("long_rail", INTERCITY)])).toThrow(
+			/two vehicle kinds/,
+		);
 	});
 
 	it("draws every kind every frame, so deck.gl keeps the same layers", () => {
@@ -177,15 +180,16 @@ describe("vehicle kinds", () => {
 	it("poses only the vehicles in view", () => {
 		const registry = new VehicleKindRegistry(standardVehicleKinds());
 		const carsOf = (frame: VehicleFrame) =>
-			dataOf(registry.draw([vehicleAt(1000)], frame).find((layer) => layer.id.includes("long_rail")));
-		expect(carsOf(FRAME)).toHaveLength(14);
+			dataOf(registry.draw([vehicleAt(1000)], frame).find((layer) => layer.id.includes("long_rail-cars")));
+		expect(carsOf(FRAME)).toHaveLength(13);
 		expect(carsOf({ ...FRAME, visibleArea: [0, 0, 1, 1] })).toHaveLength(0);
 	});
 
 	it("hides trains while they are under the mountain", () => {
-		const kind = new TrainKind("long_rail", INTERCITY_CAR);
-		expect(dataOf(kind.draw([vehicleAt(1000)], FRAME)[0])).toHaveLength(14);
-		expect(dataOf(kind.draw([vehicleAt(1000, undefined, { isInsideTunnel: true })], FRAME)[0])).toHaveLength(0);
+		const kind = new TrainKind("long_rail", INTERCITY);
+		const coaches = (vehicle: VehicleState) => dataOf(kind.draw([vehicle], FRAME).at(-1));
+		expect(coaches(vehicleAt(1000))).toHaveLength(13);
+		expect(coaches(vehicleAt(1000, undefined, { isInsideTunnel: true }))).toHaveLength(0);
 	});
 
 	it("knows where each leg starts and ends, in the direction of travel, with heights", () => {

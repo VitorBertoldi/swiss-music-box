@@ -5,8 +5,8 @@ import type { OverlayProps } from "../map/overlayProps";
 import type { MovingLayer, Palette, Rgba } from "../render/palette";
 import type { LayerFrame } from "../render/preciseVehicleLayers";
 import type { VehicleState } from "../render/vehicleTimeline";
-import type { MotionModel, PoseContext } from "./motion";
-import type { Corner, Shape } from "./shape";
+import type { PoseContext } from "./motion";
+import type { Corner } from "./shape";
 
 /** What a vehicle kind needs to know about the frame it draws into. */
 export interface VehicleFrame extends PoseContext, LayerFrame {
@@ -51,26 +51,8 @@ export function lighter(colour: Rgba, share: number): Rgba {
 	return [mix(red), mix(green), mix(blue), alpha];
 }
 
-/** Every part of every vehicle, placed by the motion model and shaped by the shape. */
-export function solidsOf(
-	vehicles: readonly VehicleState[],
-	motion: MotionModel,
-	shape: Shape,
-	context: PoseContext,
-	colour: Rgba,
-	frontColour: Rgba = colour,
-): Solid[] {
-	return vehicles.flatMap((vehicle) =>
-		motion.place(vehicle, context).map((pose, part) => ({
-			footprint: shape.footprint(pose),
-			heightM: shape.heightM,
-			colour: part === 0 ? frontColour : colour,
-		})),
-	);
-}
-
 /** More ambient light than deck.gl's default, so vehicle colours stay vivid on the dark map. */
-const SOLID_MATERIAL = {
+export const SOLID_MATERIAL = {
 	ambient: 0.65,
 	diffuse: 0.55,
 	shininess: 24,
