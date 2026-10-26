@@ -7,6 +7,8 @@ import type { FrameState, Scene, SceneAssets } from "./scene";
  * car is about 8 pixels long; further out the solids would be specks, so dots read better.
  */
 export const VEHICLE_KINDS_MIN_ZOOM = 14;
+/** Up close the trail is only a hint of where a vehicle came from; the vehicle itself leads. */
+const CLOSE_UP_TRAIL_OPACITY = 0.3;
 
 /**
  * Scene 1: the cartographic view. The OSM street map with every vehicle at its exact
@@ -25,12 +27,13 @@ export class LivingMapScene implements Scene {
 		const vehicleLayers =
 			frame.zoom >= VEHICLE_KINDS_MIN_ZOOM
 				? [
-						vehicleTailLayer(vehicles, frame.palette, opacity, this.id, beneathLabels),
+						vehicleTailLayer(vehicles, frame.palette, opacity * CLOSE_UP_TRAIL_OPACITY, this.id, beneathLabels),
 						...vehicleKinds.draw(vehicles, {
 							palette: frame.palette,
 							opacity,
 							idPrefix: this.id,
 							beforeId: beneathLabels,
+							metresPerPixel: frame.metresPerPixel,
 						}),
 					]
 				: preciseVehicleLayers(vehicles, frame.palette, opacity, this.id, beneathLabels);

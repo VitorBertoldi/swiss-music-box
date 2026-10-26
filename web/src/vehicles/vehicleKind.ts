@@ -14,6 +14,20 @@ export interface VehicleFrame {
 	readonly idPrefix: string;
 	/** The map layer to draw below, so labels stay on top. */
 	readonly beforeId: string;
+	/** Ground metres per screen pixel, to keep small vehicles visible from further out. */
+	readonly metresPerPixel: number;
+}
+
+/**
+ * Narrowest a solid is drawn, in screen pixels. A 2.8 m train car is a hairline at zoom 15,
+ * so further out vehicles are drawn wider than they are (their length stays true), as maps
+ * draw roads wider than they are.
+ */
+export const MIN_SOLID_WIDTH_PX = 8;
+
+/** The narrowest width that is still visible in this frame, in metres. */
+export function minimumWidthM(frame: VehicleFrame): number {
+	return MIN_SOLID_WIDTH_PX * frame.metresPerPixel;
 }
 
 /**
@@ -32,16 +46,37 @@ export interface Solid {
 	readonly colour: Rgba;
 }
 
+/** A colour mixed `share` of the way towards white. */
+export function lighter(colour: Rgba, share: number): Rgba {
+	const [red, green, blue, alpha] = colour;
+	const mix = (channel: number): number => Math.round(channel + (255 - channel) * share);
+	return [mix(red), mix(green), mix(blue), alpha];
+}
+
 /** Every part of every vehicle, placed by the motion model and shaped by the shape. */
-export function solidsOf(vehicles: readonly VehicleState[], motion: MotionModel, shape: Shape, colour: Rgba): Solid[] {
+export function solidsOf(
+	vehicles: readonly VehicleState[],
+	motion: MotionModel,
+	shape: Shape,
+	colour: Rgba,
+	frontColour: Rgba = colour,
+): Solid[] {
 	return vehicles.flatMap((vehicle) =>
-		motion.place(vehicle).map((placement) => ({
+		motion.place(vehicle).map((placement, part) => ({
 			footprint: shape.footprint(placement),
 			heightM: shape.heightM,
-			colour,
+			colour: part === 0 ? frontColour : colour,
 		})),
 	);
 }
+
+/** More ambient light than deck.gl's default, so vehicle colours stay vivid on the dark map. */
+const SOLID_MATERIAL = {
+	ambient: 0.65,
+	diffuse: 0.55,
+	shininess: 24,
+	specularColor: [60, 64, 70] as [number, number, number],
+};
 
 /** Solids drawn as extruded footprints, lit by deck.gl, standing among the 3D buildings. */
 export function solidLayer(id: string, solids: readonly Solid[], frame: VehicleFrame): Layer {
@@ -52,6 +87,7 @@ export function solidLayer(id: string, solids: readonly Solid[], frame: VehicleF
 		getElevation: (solid) => solid.heightM,
 		getFillColor: (solid) => [...solid.colour],
 		extruded: true,
+		material: SOLID_MATERIAL,
 		opacity: frame.opacity,
 		beforeId: frame.beforeId,
 	});

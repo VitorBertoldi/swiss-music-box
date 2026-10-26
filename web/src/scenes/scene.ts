@@ -19,6 +19,8 @@ export interface FrameState {
 	readonly framesPerSecond: number;
 	/** Map zoom of this frame; scenes draw more detail closer in. */
 	readonly zoom: number;
+	/** Ground metres per screen pixel at the centre of the view. */
+	readonly metresPerPixel: number;
 }
 
 /** The shared, prepared data every scene draws from. */

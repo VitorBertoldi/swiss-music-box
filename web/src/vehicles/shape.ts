@@ -6,7 +6,10 @@ export type Corner = [longitude: number, latitude: number, heightM: number];
 
 /** What one part of a vehicle looks like: a footprint raised into a solid. */
 export interface Shape {
+	readonly widthM: number;
 	readonly heightM: number;
+	/** This shape, or a wider and taller copy if it is narrower than `minWidthM`. */
+	widened(minWidthM: number): Shape;
 	/** The outline of the part's underside, placed and turned as the placement says. */
 	footprint(placement: Placement): Corner[];
 }
@@ -29,6 +32,18 @@ function placeOutline(outline: LocalOutline, placement: Placement): Corner[] {
 	});
 }
 
+/** A widened shape grows at most this much taller, so it doesn't tower over the buildings. */
+const MAX_HEIGHT_EXAGGERATION = 2;
+/** A widened shape stays clearly longer than wide, so a train car never turns into a bead. */
+const MAX_WIDTH_PER_LENGTH = 0.6;
+
+/** Width and height of a shape widened towards `minWidthM`; null if it needs no widening. */
+function widenedSize(lengthM: number, widthM: number, heightM: number, minWidthM: number): [number, number] | null {
+	const width = Math.min(minWidthM, lengthM * MAX_WIDTH_PER_LENGTH);
+	if (width <= widthM) return null;
+	return [width, heightM * Math.min(width / widthM, MAX_HEIGHT_EXAGGERATION)];
+}
+
 /** A rectangular solid: a train car, a funicular, a cable-car cabin. */
 export class Box implements Shape {
 	private readonly outline: LocalOutline;
@@ -46,6 +61,11 @@ export class Box implements Shape {
 			[-halfLength, -halfWidth],
 			[-halfLength, halfWidth],
 		];
+	}
+
+	widened(minWidthM: number): Box {
+		const size = widenedSize(this.lengthM, this.widthM, this.heightM, minWidthM);
+		return size === null ? this : new Box(this.lengthM, ...size);
 	}
 
 	footprint(placement: Placement): Corner[] {
@@ -75,6 +95,11 @@ export class Hull implements Shape {
 			[-halfLength, halfWidth],
 			[bowStart, halfWidth],
 		];
+	}
+
+	widened(minWidthM: number): Hull {
+		const size = widenedSize(this.lengthM, this.widthM, this.heightM, minWidthM);
+		return size === null ? this : new Hull(this.lengthM, ...size);
 	}
 
 	footprint(placement: Placement): Corner[] {

@@ -5,7 +5,7 @@ import { distanceM, lerpLonLat } from "../render/lonLat";
 import type { VehicleState } from "../render/vehicleTimeline";
 import { type CableProfile, cableHeightM, HangingFromCable, type MotionModel } from "./motion";
 import { Box, type Corner, type Shape } from "./shape";
-import { solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
+import { minimumWidthM, solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
 
 /**
  * The map is flat (no terrain yet), so cables are drawn at a fixed height above it rather
@@ -52,7 +52,12 @@ export class CableCarKind implements VehicleKind {
 			}),
 			solidLayer(
 				`${frame.idPrefix}-aerial-cabins`,
-				solidsOf(vehicles, this.motion, this.shape, solidColour(frame.palette, this.layer)),
+				solidsOf(
+					vehicles,
+					this.motion,
+					this.shape.widened(minimumWidthM(frame)),
+					solidColour(frame.palette, this.layer),
+				),
 				frame,
 			),
 		];

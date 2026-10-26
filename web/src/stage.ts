@@ -1,6 +1,6 @@
 import type { Layer } from "@deck.gl/core";
 import type { CameraMode } from "./camera/camera";
-import { toPose } from "./camera/camera";
+import { metresPerPixel, toPose } from "./camera/camera";
 import type { MapView } from "./map/mapView";
 import type { Palette } from "./render/palette";
 import type { SceneRegistry } from "./scenes/registry";
@@ -61,12 +61,14 @@ export class Stage {
 		const view = this.camera.viewAt({ minute, current: this.map.pose() });
 		if (view !== null) this.map.moveTo(toPose(view, this.map.widthPx()));
 
+		const pose = this.map.pose();
 		const frame = {
 			minute,
 			nowMs,
 			palette: this.palette,
 			framesPerSecond: this.framesPerSecond,
-			zoom: this.map.pose().zoom,
+			zoom: pose.zoom,
+			metresPerPixel: metresPerPixel(pose.zoom, pose.centre[1]),
 		};
 		const fadeIn = this.fadeInProgress(nowMs);
 		const layers: Layer[] = this.scene.layers(frame, fadeIn);

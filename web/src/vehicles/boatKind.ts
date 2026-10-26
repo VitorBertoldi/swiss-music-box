@@ -7,7 +7,7 @@ import { fadingColours } from "../render/preciseVehicleLayers";
 import { BODY_LENGTH_M, type VehicleState } from "../render/vehicleTimeline";
 import { type MotionModel, SingleHull } from "./motion";
 import { Hull, type Shape } from "./shape";
-import { solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
+import { minimumWidthM, solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
 
 /** A lake steamer or motor ship of the Swiss lake fleets, roughly. */
 const HULL = new Hull(BODY_LENGTH_M.boat, 11, 5);
@@ -37,7 +37,12 @@ export class BoatKind implements VehicleKind {
 			}),
 			solidLayer(
 				`${frame.idPrefix}-boat-hulls`,
-				solidsOf(vehicles, this.motion, this.shape, solidColour(frame.palette, this.layer)),
+				solidsOf(
+					vehicles,
+					this.motion,
+					this.shape.widened(minimumWidthM(frame)),
+					solidColour(frame.palette, this.layer),
+				),
 				frame,
 			),
 		];

@@ -3,7 +3,20 @@ import type { MovingLayer } from "../render/palette";
 import { BODY_LENGTH_M, type VehicleState } from "../render/vehicleTimeline";
 import { CarsAlongTrack, type MotionModel } from "./motion";
 import { Box, type Shape } from "./shape";
-import { solidColour, solidLayer, solidsOf, type VehicleFrame, type VehicleKind } from "./vehicleKind";
+import {
+	lighter,
+	minimumWidthM,
+	solidColour,
+	solidLayer,
+	solidsOf,
+	type VehicleFrame,
+	type VehicleKind,
+} from "./vehicleKind";
+
+/** Gap kept between two cars on screen, so a train reads as cars and not as one bar. */
+const MIN_CAR_GAP_PX = 2;
+/** The leading car is lit up a little, so you can tell which way a train is going. */
+const FRONT_CAR_LIGHTER = 0.45;
 
 /** The size of one car, and the gap between two coupled cars. */
 export interface CarSpec {
@@ -30,21 +43,25 @@ export function carsIn(bodyLengthM: number, car: CarSpec): number {
 
 /** Rail vehicles: a row of cars that bends with the track. Hidden while underground. */
 export class TrainKind implements VehicleKind {
-	private readonly motion: MotionModel;
+	private readonly carCount: number;
 	private readonly shape: Shape;
 
 	constructor(
 		readonly layer: MovingLayer,
-		car: CarSpec,
+		private readonly car: CarSpec,
 	) {
-		this.motion = new CarsAlongTrack(car.lengthM, car.gapM, carsIn(BODY_LENGTH_M[layer], car));
+		this.carCount = carsIn(BODY_LENGTH_M[layer], car);
 		this.shape = new Box(car.lengthM, car.widthM, car.heightM);
 	}
 
 	draw(vehicles: readonly VehicleState[], frame: VehicleFrame): Layer[] {
 		// In a tunnel the train is under the mountain; the tunnel glow shows where it is.
 		const aboveGround = vehicles.filter((vehicle) => !vehicle.isInsideTunnel);
-		const solids = solidsOf(aboveGround, this.motion, this.shape, solidColour(frame.palette, this.layer));
+		const gapM = Math.max(this.car.gapM, MIN_CAR_GAP_PX * frame.metresPerPixel);
+		const motion: MotionModel = new CarsAlongTrack(this.car.lengthM, gapM, this.carCount);
+		const shape = this.shape.widened(minimumWidthM(frame));
+		const colour = solidColour(frame.palette, this.layer);
+		const solids = solidsOf(aboveGround, motion, shape, colour, lighter(colour, FRONT_CAR_LIGHTER));
 		return [solidLayer(`${frame.idPrefix}-${this.layer}-cars`, solids, frame)];
 	}
 }

@@ -30,7 +30,14 @@ function vehicleEast(bodyM: number, overrides: Partial<VehicleState> = {}): Vehi
 	};
 }
 
-const FRAME: VehicleFrame = { palette: SCREEN_PALETTE, opacity: 1, idPrefix: "test", beforeId: "labels" };
+/** Zoom 19 or so: a pixel is a few centimetres, so every vehicle is drawn at its real size. */
+const FRAME: VehicleFrame = {
+	palette: SCREEN_PALETTE,
+	opacity: 1,
+	idPrefix: "test",
+	beforeId: "labels",
+	metresPerPixel: 0.2,
+};
 const dataOf = (layer: Layer | undefined): readonly unknown[] => (layer?.props.data ?? []) as readonly unknown[];
 
 describe("geometry for solids", () => {
@@ -60,6 +67,14 @@ describe("shapes", () => {
 		expect(corners.every(([, , heightM]) => heightM === 7)).toBe(true);
 		const [frontLeft, , rearRight] = corners.map(([lon, lat]): LonLat => [lon, lat]);
 		expect(distanceM(frontLeft ?? BERN, rearRight ?? BERN)).toBeCloseTo(Math.hypot(20, 4), 1);
+	});
+
+	it("draws a narrow shape wider from further out, keeping its length and capping its height", () => {
+		const car = new Box(26.8, 2.8, 4.6);
+		expect(car.widened(2)).toBe(car);
+		const middle = car.widened(10);
+		expect([middle.lengthM, middle.widthM, middle.heightM]).toEqual([26.8, 10, 9.2]);
+		expect(car.widened(40).widthM).toBeCloseTo(26.8 * 0.6, 6);
 	});
 
 	it("points a hull's bow where the boat is heading", () => {

@@ -33,6 +33,11 @@ export interface CameraMode {
 /** Ground metres covered by one pixel at zoom 0 on the equator (512 px Web Mercator tiles). */
 const METRES_PER_PIXEL_AT_ZOOM_0 = (2 * Math.PI * 6_378_137) / 512;
 
+/** Ground metres covered by one screen pixel at this zoom and latitude. */
+export function metresPerPixel(zoom: number, latitude: number): number {
+	return (METRES_PER_PIXEL_AT_ZOOM_0 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
+}
+
 /** The Web Mercator zoom at which `spanM` of ground fills `viewportWidthPx` pixels. */
 export function zoomForSpan(spanM: number, latitude: number, viewportWidthPx: number): number {
 	const metresPerPixelAtZoom0 = METRES_PER_PIXEL_AT_ZOOM_0 * Math.cos((latitude * Math.PI) / 180);

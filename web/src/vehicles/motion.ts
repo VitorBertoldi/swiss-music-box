@@ -14,6 +14,7 @@ export interface Placement {
 
 /** How a kind of vehicle sits on its route: the parts it consists of, and where they are. */
 export interface MotionModel {
+	/** The parts of one vehicle, its front part first. */
 	place(vehicle: VehicleState): Placement[];
 }
 
