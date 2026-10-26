@@ -98,6 +98,7 @@ export function makeMotion(): Motion {
 				coordinates,
 				// A gentle 1 % climb: 540 m at Bern to 640 m at 10 km.
 				heights_dm: [5400, 5900, 6400],
+				ropeway: null,
 				overview_coordinates: coordinates,
 				length_m: 10_000,
 				route: "track",
@@ -113,6 +114,7 @@ export function makeMotion(): Motion {
 			// The IC's run starts west of Bern and, after it reverses, east of the 10 km point.
 			lead_in: [0, 1, 0],
 		},
+		pylons: [],
 		lead_ins: [
 			{ coordinates: [longitude - LEAD_IN_LONGITUDE, latitude], heights_dm: [5400] },
 			{ coordinates: [longitude + 2 * LONGITUDE_PER_5_KM + LEAD_IN_LONGITUDE, latitude], heights_dm: [6400] },

@@ -73,6 +73,34 @@
       "title": "Legs",
       "type": "object"
     },
+    "Pylon": {
+      "additionalProperties": false,
+      "description": "A ropeway pylon (`aerialway=pylon`) on a rope in use: where it stands and how high.",
+      "properties": {
+        "longitude": {
+          "type": "number"
+        },
+        "latitude": {
+          "type": "number"
+        },
+        "base_dm": {
+          "description": "Height of the ground at its foot, in decimetres",
+          "type": "integer"
+        },
+        "top_dm": {
+          "description": "Height of its top, where the rope runs, in decimetres",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "longitude",
+        "latitude",
+        "base_dm",
+        "top_dm"
+      ],
+      "title": "Pylon",
+      "type": "object"
+    },
     "Segment": {
       "additionalProperties": false,
       "description": "The path between two consecutive stops, shared by every trip that uses it.",
@@ -107,9 +135,26 @@
           "enum": [
             "track",
             "ferry_route",
+            "rope",
             "straight"
           ],
           "type": "string"
+        },
+        "ropeway": {
+          "anyOf": [
+            {
+              "enum": [
+                "cable_car",
+                "gondola",
+                "chair_lift"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a rope: what hangs from it (heights are the rope's), else null"
         },
         "tunnels": {
           "items": {
@@ -124,6 +169,7 @@
         "overview_coordinates",
         "length_m",
         "route",
+        "ropeway",
         "tunnels"
       ],
       "title": "Segment",
@@ -252,6 +298,12 @@
       },
       "type": "array"
     },
+    "pylons": {
+      "items": {
+        "$ref": "#/$defs/Pylon"
+      },
+      "type": "array"
+    },
     "tunnels": {
       "items": {
         "$ref": "#/$defs/Tunnel"
@@ -266,6 +318,7 @@
     "trips",
     "legs",
     "lead_ins",
+    "pylons",
     "tunnels"
   ],
   "title": "Motion",

@@ -31,6 +31,12 @@
   <node id="50" lat="46.60000" lon="7.90000" version="1"/>
   <node id="51" lat="46.62000" lon="7.92000" version="1"/>
   <node id="52" lat="46.63000" lon="7.93000" version="1"/>
+  <node id="53" lat="46.61000" lon="7.91000" version="1">
+    <tag k="aerialway" v="pylon"/><tag k="height" v="40"/>
+  </node>
+  <node id="54" lat="46.61500" lon="7.91500" version="1">
+    <tag k="aerialway" v="pylon"/>
+  </node>
   <!-- a lake of about 0.8 km2 and a pond of about 0.01 km2 -->
   <node id="60" lat="46.80000" lon="6.80000" version="1"/>
   <node id="61" lat="46.80000" lon="6.81000" version="1"/>
@@ -76,7 +82,7 @@
     <tag k="railway" v="rail"/><tag k="service" v="siding"/>
   </way>
   <way id="110" version="1">
-    <nd ref="50"/><nd ref="51"/>
+    <nd ref="50"/><nd ref="53"/><nd ref="54"/><nd ref="51"/>
     <tag k="aerialway" v="cable_car"/><tag k="name" v="Testbahn"/>
   </way>
   <way id="111" version="1">

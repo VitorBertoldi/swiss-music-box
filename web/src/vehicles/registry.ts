@@ -1,4 +1,5 @@
 import type { Layer } from "@deck.gl/core";
+import type { Pylon } from "../contract/motion";
 import type { LonLatBox } from "../map/mapView";
 import type { LonLat } from "../render/lonLat";
 import type { MovingLayer } from "../render/palette";
@@ -17,15 +18,15 @@ export const MOVING_LAYERS: readonly MovingLayer[] = [
 	"aerial",
 ];
 
-/** The kinds the player uses: one per moving layer. */
-export function standardVehicleKinds(): VehicleKind[] {
+/** The kinds the player uses: one per moving layer. Cable cars also draw their `pylons`. */
+export function standardVehicleKinds(pylons: readonly Pylon[]): VehicleKind[] {
 	return [
 		new TrainKind("long_rail", INTERCITY),
 		new TrainKind("regional_rail", S_BAHN),
 		new TrainKind("mountain_rail", MOUNTAIN_TRAIN),
 		new TrainKind("funicular", FUNICULAR),
 		new BoatKind(),
-		new CableCarKind(),
+		new CableCarKind(pylons),
 	];
 }
 

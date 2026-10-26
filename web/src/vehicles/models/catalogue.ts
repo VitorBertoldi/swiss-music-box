@@ -245,3 +245,45 @@ export function tramwayCabin(): ModelParts {
 		fixed.box([-0.9, -0.4, CABIN_ROPE_HEIGHT_M - 0.4], [0.9, 0.4, CABIN_ROPE_HEIGHT_M + 0.2], RUNNING_GEAR);
 	});
 }
+
+/** Height from a gondola's floor up to its rope. */
+export const GONDOLA_ROPE_HEIGHT_M = 4.6;
+
+/** An eight-seat gondola: small, glazed, on a short hanger. */
+export function gondolaCabin(): ModelParts {
+	const [length, width, height] = [2.4, 1.9, 2.2];
+	const [hl, hw] = [length / 2, width / 2];
+	return model(length, width, height, (tinted, fixed) => {
+		tinted.box([-hl, -hw, 0], [hl, hw, 0.8], TINT);
+		fixed.box([-hl, -hw, 0.8], [hl, hw, 1.8], GLASS);
+		tinted.box([-hl, -hw, 1.8], [hl, hw, height], TINT);
+		fixed.box([-0.1, -0.1, height], [0.1, 0.1, GONDOLA_ROPE_HEIGHT_M - 0.2], RUNNING_GEAR);
+		fixed.box([-0.4, -0.2, GONDOLA_ROPE_HEIGHT_M - 0.3], [0.4, 0.2, GONDOLA_ROPE_HEIGHT_M + 0.15], RUNNING_GEAR);
+	});
+}
+
+/** Height from a chair's seat up to its rope. */
+export const CHAIR_ROPE_HEIGHT_M = 3.2;
+
+/** A four-seat chair: a seat and backrest across the rope, hung from a bar. */
+export function liftChair(): ModelParts {
+	const [length, width, height] = [1.0, 2.6, 1.3];
+	const hw = width / 2;
+	return model(length, width, height, (tinted, fixed) => {
+		tinted.box([-0.5, -hw, 0.35], [0.4, hw, 0.5], TINT);
+		tinted.box([-0.5, -hw, 0.5], [-0.35, hw, height], TINT);
+		fixed.box([-0.45, -0.05, height], [-0.35, 0.05, CHAIR_ROPE_HEIGHT_M], RUNNING_GEAR);
+	});
+}
+
+/**
+ * A ropeway pylon, one metre tall: drawn stretched to each pylon's height. A broad lower
+ * mast, a slimmer upper one and a cap where the rope's sheaves sit.
+ */
+export function pylonTower(): MeshData {
+	return new MeshBuilder()
+		.box([-1.2, -1.2, 0], [1.2, 1.2, 0.6], ROOF)
+		.box([-0.7, -0.7, 0.6], [0.7, 0.7, 0.97], ROOF)
+		.box([-1.6, -1.6, 0.97], [1.6, 1.6, 1], RUNNING_GEAR)
+		.build();
+}

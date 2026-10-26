@@ -5,9 +5,12 @@ from test_network import line
 from smb_pipeline.geo import FloatArray
 from smb_pipeline.heights import (
     CLEARANCE_M,
+    MIN_ROPE_CLEARANCE_M,
+    STATION_ROPE_HEIGHT_M,
     HeightProfiler,
     across_structures,
     fill_dips,
+    rope_heights,
     smoothed,
 )
 from smb_pipeline.network import build_network
@@ -57,7 +60,7 @@ def test_a_bridge_crosses_the_valley_level_while_plain_track_follows_the_ground(
     router = NetworkRouter(graph, "track")
     start, end = graph.place_of(0), graph.place_of(5)
     path = router.route_all([StopPair("a", "b")], {"a": start, "b": end})[StopPair("a", "b")]
-    profile = HeightProfiler(Valley(), graph).profile(path, "long_rail", tolerance_m=1.0)
+    profile = HeightProfiler(Valley(), {"track": graph}).profile(path, "long_rail", tolerance_m=1.0)
     eastings = [place.easting_m - WEST for place in profile.places]
     by_east = dict(zip(eastings, profile.heights_m, strict=True))
     mid_valley = min(by_east, key=lambda x: abs(x - 2_500))
@@ -71,7 +74,7 @@ def test_boats_float_at_the_lake_level() -> None:
     path = router.route_all([StopPair("a", "b")], {"a": graph.place_of(0), "b": graph.place_of(1)})[
         StopPair("a", "b")
     ]
-    profile = HeightProfiler(Valley(), graph).profile(path, "boat", tolerance_m=1.0)
+    profile = HeightProfiler(Valley(), {"track": graph}).profile(path, "boat", tolerance_m=1.0)
     assert set(profile.heights_m) == {440.0}
 
 
@@ -94,5 +97,37 @@ def test_a_tunnel_runs_straight_under_the_hill_without_being_lifted_onto_it() ->
     router = NetworkRouter(graph, "track")
     places = {"a": graph.place_of(0), "b": graph.place_of(5)}
     path = router.route_all([StopPair("a", "b")], places)[StopPair("a", "b")]
-    profile = HeightProfiler(Hill(), graph).profile(path, "long_rail", tolerance_m=1.0)
+    profile = HeightProfiler(Hill(), {"track": graph}).profile(path, "long_rail", tolerance_m=1.0)
     assert max(profile.heights_m) == pytest.approx(500 + CLEARANCE_M, abs=0.5)
+
+
+class Flat:
+    """Level ground at 1000 m."""
+
+    def heights(self, latitudes: FloatArray, longitudes: FloatArray) -> FloatArray:
+        return 1000 + 0 * latitudes + 0 * longitudes
+
+
+def test_a_rope_runs_over_its_pylons_and_sags_between_them() -> None:
+    xs = [0, 1_000, 2_000]
+    rope = line([(WEST + x, NORTH) for x in xs], [1, 2, 3], supports_m=[0, 40, 0])
+    graph = build_network([rope])
+    places = {"a": graph.place_of(0), "b": graph.place_of(2)}
+    path = NetworkRouter(graph, "rope").route_all([StopPair("a", "b")], places)[StopPair("a", "b")]
+    profile = HeightProfiler(Flat(), {"rope": graph}).profile(path, "aerial", tolerance_m=1.0)
+    by_east = dict(
+        zip([p.easting_m - WEST for p in profile.places], profile.heights_m, strict=True)
+    )
+    assert by_east[0] == pytest.approx(1000 + STATION_ROPE_HEIGHT_M)
+    assert by_east[1_000] == pytest.approx(1040)
+    assert min(profile.heights_m) >= 1000 + MIN_ROPE_CLEARANCE_M
+    assert profile.ropeway == "cable_car"
+    assert [round(p.place.easting_m - WEST) for p in profile.pylons] == [1_000]
+    assert profile.pylons[0].base_m == pytest.approx(1000)
+
+
+def test_rope_heights_sag_most_in_the_middle_of_a_span() -> None:
+    along = np.arange(0, 1_001, 100, dtype=np.float64)
+    heights = rope_heights(along, [0, 10], {0: 100.0, 10: 100.0})
+    assert heights[0] == heights[-1] == 100
+    assert heights[5] == pytest.approx(100 - 30)  # 3 % of a 1 km span

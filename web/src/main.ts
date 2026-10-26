@@ -87,7 +87,7 @@ async function main(): Promise<void> {
 	player.onNote((note, atMs) => flashes.add(note, atMs));
 	const assets: SceneAssets = {
 		timeline,
-		vehicleKinds: new VehicleKindRegistry(standardVehicleKinds()),
+		vehicleKinds: new VehicleKindRegistry(standardVehicleKinds(show.motion.pylons)),
 		overviewVehicles: () => overviewVehicles,
 		flashes,
 		tunnels: new TunnelGlow(show.motion.tunnels, show.day.tunnels),

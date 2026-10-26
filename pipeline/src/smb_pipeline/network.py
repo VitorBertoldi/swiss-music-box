@@ -13,6 +13,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.spatial import cKDTree
 
+from smb_pipeline.contract import Ropeway
 from smb_pipeline.geo import FloatArray, Place, Point
 from smb_pipeline.osm import OsmLine
 
@@ -49,6 +50,16 @@ class NetworkGraph:
     """Tunnel index for edges inside a long tunnel, keyed by (smaller, larger) node index."""
     node_locator: cKDTree = field(repr=False)
     structure_edges: Mapping[tuple[int, int], Structure] = field(default_factory=dict, repr=False)
+    node_supports_m: FloatArray | None = field(default=None, repr=False)
+    """Height of the pylon at each node of a ropeway graph, 0 where there is none."""
+    edge_ropeway: Mapping[tuple[int, int], Ropeway] = field(default_factory=dict, repr=False)
+
+    def support_at(self, node: int) -> float:
+        return 0.0 if self.node_supports_m is None else float(self.node_supports_m[node])
+
+    def ropeway_between(self, node_a: int, node_b: int) -> Ropeway | None:
+        return self.edge_ropeway.get((min(node_a, node_b), max(node_a, node_b)))
+
     """Edges on any bridge or in any tunnel: there the track doesn't follow the ground."""
 
     def structure_between(self, node_a: int, node_b: int) -> Structure | None:
@@ -115,6 +126,8 @@ class NetworkGraphBuilder:
         """Length of each edge, keyed by (smaller, larger) node index, so duplicates collapse."""
         self._tunnel_edges: dict[tuple[int, int], int] = {}
         self._structure_edges: dict[tuple[int, int], Structure] = {}
+        self._supports: list[float] = []
+        self._edge_ropeway: dict[tuple[int, int], Ropeway] = {}
 
     def add_line(self, line: OsmLine, tunnel_index: int | None = None) -> None:
         nodes = [
@@ -128,6 +141,9 @@ class NetworkGraphBuilder:
                 strict=True,
             )
         ]
+        if line.support_heights_m is not None:
+            for node, support_m in zip(nodes, line.support_heights_m.tolist(), strict=True):
+                self._supports[node] = max(self._supports[node], support_m)
         for start, end in itertools.pairwise(nodes):
             if start == end:
                 continue
@@ -142,6 +158,8 @@ class NetworkGraphBuilder:
                 self._structure_edges[edge] = "tunnel"
             elif line.is_bridge:
                 self._structure_edges[edge] = "bridge"
+            if line.ropeway is not None:
+                self._edge_ropeway[edge] = line.ropeway
 
     def build(self, tunnels: Sequence[Tunnel]) -> NetworkGraph:
         node_count = len(self._eastings)
@@ -163,6 +181,8 @@ class NetworkGraphBuilder:
             tunnels=tunnels,
             edge_tunnel=self._tunnel_edges,
             structure_edges=self._structure_edges,
+            node_supports_m=np.array(self._supports),
+            edge_ropeway=self._edge_ropeway,
             node_locator=cKDTree(np.column_stack([eastings, northings])),
         )
 
@@ -175,6 +195,7 @@ class NetworkGraphBuilder:
             self._northings.append(place.northing_m)
             self._longitudes.append(place.longitude)
             self._latitudes.append(place.latitude)
+            self._supports.append(0.0)
         return index
 
 

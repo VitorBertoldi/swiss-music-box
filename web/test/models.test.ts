@@ -4,8 +4,10 @@ import { SCREEN_PALETTE } from "../src/render/palette";
 import {
 	CABIN_ROPE_HEIGHT_M,
 	funicularCar,
+	gondolaCabin,
 	intercityCoach,
 	lakeShip,
+	liftChair,
 	type ModelParts,
 	mountainCar,
 	re460Locomotive,
@@ -78,6 +80,8 @@ describe("vehicle catalogue", () => {
 		["funicular", funicularCar()],
 		["lake ship", lakeShip()],
 		["cabin", tramwayCabin()],
+		["gondola", gondolaCabin()],
+		["chair", liftChair()],
 	];
 
 	it.each(models)("models the %s at its stated size, standing on its origin", (_, parts) => {

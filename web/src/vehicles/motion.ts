@@ -125,7 +125,7 @@ export function cableHeightM(
 	return fromAltitudeM + (toAltitudeM - fromAltitudeM) * t + profile.stationHeightM - 4 * sagM * t * (1 - t);
 }
 
-/** A cabin hanging below the rope, pointing from one station to the other, always upright. */
+/** A cabin (or gondola, or chair) hanging below its rope, pointing along the span, upright. */
 export class HangingFromCable implements MotionModel {
 	constructor(
 		private readonly cable: CableProfile,
@@ -139,13 +139,9 @@ export class HangingFromCable implements MotionModel {
 		const head = vehicle.path.at(vehicle.headM);
 		const spanM = distanceM(from.point, to.point);
 		const t = spanM === 0 ? 0 : Math.min(1, distanceM(from.point, head.point) / spanM);
-		const ropeM = cableHeightM(
-			this.cable,
-			spanM,
-			t,
-			elevation.altitudeM(from.heightM),
-			elevation.altitudeM(to.heightM),
-		);
+		// On the terrain a cable car's path heights are its rope's, over the pylons; the flat
+		// map has no ground to measure from, so it draws one sagging span between the stations.
+		const ropeM = elevation.isTerrain ? elevation.altitudeM(head.heightM) : cableHeightM(this.cable, spanM, t);
 		return [
 			{
 				position: [head.point[0], head.point[1], ropeM - this.dropBelowCableM],

@@ -13,7 +13,8 @@ from smb_pipeline.osm import OsmExtract, classify_line, read_osm
         ({"railway": "funicular"}, "funicular"),
         ({"railway": "tram"}, None),
         ({"route": "ferry"}, "ferry"),
-        ({"aerialway": "gondola"}, None),
+        ({"aerialway": "gondola"}, "aerialway"),
+        ({"aerialway": "t-bar"}, None),
         ({"highway": "motorway"}, None),
     ],
 )
@@ -23,7 +24,9 @@ def test_classify_line(tags: dict[str, str], kind: str | None) -> None:
 
 @pytest.fixture(scope="module")
 def extract() -> OsmExtract:
-    return read_osm(MINI_OSM, kinds=frozenset({"rail", "mountain_rail", "funicular", "ferry"}))
+    return read_osm(
+        MINI_OSM, kinds=frozenset({"rail", "mountain_rail", "funicular", "ferry", "aerialway"})
+    )
 
 
 def test_reads_tunnels_and_names(extract: OsmExtract) -> None:
@@ -35,7 +38,7 @@ def test_reads_tunnels_and_names(extract: OsmExtract) -> None:
 
 def test_skips_ways_vehicles_do_not_use(extract: OsmExtract) -> None:
     ids = {line.osm_id for line in extract.lines}
-    assert {110, 111, 130, 131}.isdisjoint(ids)  # cable car, drag lift, motorway, street
+    assert {111, 130, 131}.isdisjoint(ids)  # drag lift, motorway, street
 
 
 def test_keeps_exact_wgs84_and_projects_to_lv95(extract: OsmExtract) -> None:
@@ -48,3 +51,11 @@ def test_keeps_exact_wgs84_and_projects_to_lv95(extract: OsmExtract) -> None:
 
 def test_has_no_border_unless_asked(extract: OsmExtract) -> None:
     assert extract.country is None
+
+
+def test_reads_ropeways_with_their_pylons(extract: OsmExtract) -> None:
+    testbahn = next(line for line in extract.lines if line.osm_id == 110)
+    assert testbahn.kind == "aerialway" and testbahn.ropeway == "cable_car"
+    assert testbahn.support_heights_m is not None
+    # Stations at both ends; a tagged 40 m pylon and an untagged one at the cable-car default.
+    assert list(testbahn.support_heights_m) == [0, 40, 30, 0]

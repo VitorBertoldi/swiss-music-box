@@ -10,6 +10,7 @@ export interface Motion {
   trips: Trips;
   legs: Legs;
   lead_ins: LeadIn[];
+  pylons: Pylon[];
   tunnels: Tunnel[];
 }
 /**
@@ -35,7 +36,11 @@ export interface Segment {
   /**
    * How the path was found
    */
-  route: "track" | "ferry_route" | "straight";
+  route: "track" | "ferry_route" | "rope" | "straight";
+  /**
+   * For a rope: what hangs from it (heights are the rope's), else null
+   */
+  ropeway: ("cable_car" | "gondola" | "chair_lift") | null;
   tunnels: TunnelPassage[];
 }
 /**
@@ -85,6 +90,21 @@ export interface LeadIn {
    * Height per point, in decimetres
    */
   heights_dm: number[];
+}
+/**
+ * A ropeway pylon (`aerialway=pylon`) on a rope in use: where it stands and how high.
+ */
+export interface Pylon {
+  longitude: number;
+  latitude: number;
+  /**
+   * Height of the ground at its foot, in decimetres
+   */
+  base_dm: number;
+  /**
+   * Height of its top, where the rope runs, in decimetres
+   */
+  top_dm: number;
 }
 /**
  * A long tunnel found in OpenStreetMap (`tunnel=yes` on rail ways).

@@ -16,6 +16,7 @@ def line(
     is_tunnel: bool = False,
     is_bridge: bool = False,
     name: str | None = None,
+    supports_m: list[float] | None = None,
 ) -> OsmLine:
     """A rail line through LV95 points; ways sharing a node id are connected."""
     eastings = np.array([point[0] for point in points], dtype=np.float64)
@@ -23,7 +24,6 @@ def line(
     latitudes, longitudes = wgs84_from_lv95_arrays(eastings, northings)
     return OsmLine(
         osm_id=next(_next_id),
-        kind="rail",
         node_ids=np.array(node_ids, dtype=np.int64),
         longitudes=longitudes,
         latitudes=latitudes,
@@ -32,6 +32,9 @@ def line(
         is_tunnel=is_tunnel,
         is_bridge=is_bridge,
         name=name,
+        kind="aerialway" if supports_m is not None else "rail",
+        ropeway="cable_car" if supports_m is not None else None,
+        support_heights_m=None if supports_m is None else np.array(supports_m, dtype=np.float64),
     )
 
 

@@ -1,10 +1,14 @@
 import type { Motion, Segment } from "../contract/motion";
+
 import { at } from "../music/collections";
 import { MINUTES_PER_DAY } from "../music/constants";
 import { distanceM, type LonLat, lerpLonLat, toLonLats } from "./lonLat";
 import type { MovingLayer } from "./palette";
 import type { PathMeasure } from "./pathMeasure";
 import { TripRuns } from "./tripRuns";
+
+/** What hangs from a rope: a large cabin, a gondola, or a chair. */
+export type Ropeway = NonNullable<Segment["ropeway"]>;
 
 /** Typical length of a vehicle, so that up close a train looks like a train. */
 export const BODY_LENGTH_M: Readonly<Record<MovingLayer, number>> = {
@@ -39,6 +43,8 @@ export interface VehicleState {
 	/** Where the current leg starts and ends, in the direction of travel. */
 	readonly legFrom: LonLat;
 	readonly legTo: LonLat;
+	/** For a cable car on an OSM rope: what hangs from it; null for anything else. */
+	readonly ropeway: Ropeway | null;
 }
 
 interface PreparedPath {
@@ -134,6 +140,7 @@ export class VehicleTimeline {
 			isInsideTunnel: this.isInsideTunnel(leg, lengthM === 0 ? 0 : (headM - startM) / lengthM),
 			legFrom: run.path.at(startM).point,
 			legTo: run.path.at(startM + lengthM).point,
+			ropeway: at(this.motion.segments, at(legs.segment, leg)).ropeway,
 		};
 	}
 

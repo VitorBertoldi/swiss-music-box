@@ -13,12 +13,13 @@ from smb_pipeline.contract import (
     Legs,
     Motion,
     MovingLayer,
+    Pylon,
     Segment,
     Trips,
     Tunnel,
     TunnelPassage,
 )
-from smb_pipeline.geo import Place, flat_lonlat, simplify_indices
+from smb_pipeline.geo import WGS84_DECIMALS, Place, flat_lonlat, simplify_indices
 from smb_pipeline.heights import HeightProfiler, Profile
 from smb_pipeline.lead_ins import LeadInBuilder, starts_new_run
 from smb_pipeline.network import Tunnel as NetworkTunnel
@@ -32,6 +33,7 @@ PRECISE_TOLERANCE_M: Final = 1.0
 # The country-wide view shows Switzerland at ~90 m per pixel; 15 m is far below that.
 OVERVIEW_TOLERANCE_M: Final = 15.0
 NO_LEAD_IN: Final = -1
+DECIMETRES_PER_METRE: Final = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +103,7 @@ def build_motion(
 ) -> Motion:
     """Lays every trip's legs onto the routed paths (from `route_unique_pairs`)."""
     segment_index = {pair_key: index for index, pair_key in enumerate(paths)}
+    built_segments = [_segment(path, layer, heights) for (_, _, layer), path in paths.items()]
     lead_in_profiles: list[Profile] = []
     lead_in_of_start: dict[tuple[int, bool], int] = {}
     lead_in_column: list[int] = []
@@ -150,7 +153,10 @@ def build_motion(
 
     return Motion(
         service_date=service_date,
-        segments=[_segment(path, layer, heights) for (_, _, layer), path in paths.items()],
+        segments=[segment for segment, _ in built_segments],
+        pylons=list(
+            {_pylon_key(pylon): pylon for _, pylons in built_segments for pylon in pylons}.values()
+        ),
         trips=Trips(layer=trip_layers, first_leg=first_legs, leg_count=leg_counts),
         legs=Legs(
             segment=segment_column,
@@ -160,7 +166,9 @@ def build_motion(
             lead_in=lead_in_column,
         ),
         lead_ins=[
-            LeadIn(coordinates=flat_lonlat(profile.places), heights_dm=_decimetres(profile))
+            LeadIn(
+                coordinates=flat_lonlat(profile.places), heights_dm=_decimetres(profile.heights_m)
+            )
             for profile in lead_in_profiles
         ],
         tunnels=[_contract_tunnel(tunnel) for tunnel in tunnels],
@@ -222,16 +230,20 @@ def _midnight_shift(first_departure_minute: int) -> int:
     return MINUTES_PER_DAY if first_departure_minute >= MINUTES_PER_DAY else 0
 
 
-def _decimetres(profile: Profile) -> list[int]:
-    return [round(height * 10) for height in profile.heights_m]
+def _decimetres(heights_m: Sequence[float]) -> list[int]:
+    return [round(height * DECIMETRES_PER_METRE) for height in heights_m]
 
 
-def _segment(path: RoutedPath, layer: MovingLayer, heights: HeightProfiler) -> Segment:
+def _segment(
+    path: RoutedPath, layer: MovingLayer, heights: HeightProfiler
+) -> tuple[Segment, list[Pylon]]:
+    """The segment for a routed path, and the pylons its rope runs over (if it is a ropeway)."""
     length = max(path.length_m, 1.0)
     profile = heights.profile(path, layer, PRECISE_TOLERANCE_M)
-    return Segment(
+    segment = Segment(
         coordinates=flat_lonlat(profile.places),
-        heights_dm=_decimetres(profile),
+        heights_dm=_decimetres(profile.heights_m),
+        ropeway=profile.ropeway,
         overview_coordinates=flat_lonlat(simplified(path.points, OVERVIEW_TOLERANCE_M)),
         length_m=round(path.length_m),
         route=path.route,
@@ -244,6 +256,20 @@ def _segment(path: RoutedPath, layer: MovingLayer, heights: HeightProfiler) -> S
             for span in path.tunnel_spans
         ],
     )
+    pylons = [
+        Pylon(
+            longitude=round(pylon.place.longitude, WGS84_DECIMALS),
+            latitude=round(pylon.place.latitude, WGS84_DECIMALS),
+            base_dm=round(pylon.base_m * DECIMETRES_PER_METRE),
+            top_dm=round(pylon.top_m * DECIMETRES_PER_METRE),
+        )
+        for pylon in profile.pylons
+    ]
+    return segment, pylons
+
+
+def _pylon_key(pylon: Pylon) -> tuple[float, float]:
+    return pylon.longitude, pylon.latitude
 
 
 def simplified(places: Sequence[Place], tolerance_m: float) -> list[Place]:

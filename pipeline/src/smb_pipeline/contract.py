@@ -28,7 +28,8 @@ MINUTES_PER_DAY: Final = 1440
 NoteLayer = Literal["long_rail", "mountain_rail", "boat", "aerial", "funicular"]
 TextureLayer = Literal["regional_rail", "tram", "bus"]
 MovingLayer = Literal["long_rail", "mountain_rail", "regional_rail", "boat", "aerial", "funicular"]
-RouteKind = Literal["track", "ferry_route", "straight"]
+RouteKind = Literal["track", "ferry_route", "rope", "straight"]
+Ropeway = Literal["cable_car", "gondola", "chair_lift"]
 
 
 class _Model(BaseModel):
@@ -147,6 +148,9 @@ class Segment(_Model):
     )
     length_m: int = Field(description="Length along the network")
     route: RouteKind = Field(description="How the path was found")
+    ropeway: Ropeway | None = Field(
+        description="For a rope: what hangs from it (heights are the rope's), else null"
+    )
     tunnels: list[TunnelPassage]
 
 
@@ -202,6 +206,15 @@ class LeadIn(_Model):
     heights_dm: list[int] = Field(description="Height per point, in decimetres")
 
 
+class Pylon(_Model):
+    """A ropeway pylon (`aerialway=pylon`) on a rope in use: where it stands and how high."""
+
+    longitude: float
+    latitude: float
+    base_dm: int = Field(description="Height of the ground at its foot, in decimetres")
+    top_dm: int = Field(description="Height of its top, where the rope runs, in decimetres")
+
+
 class Tunnel(_Model):
     """A long tunnel found in OpenStreetMap (`tunnel=yes` on rail ways)."""
 
@@ -220,6 +233,7 @@ class Motion(_Model):
     trips: Trips
     legs: Legs
     lead_ins: list[LeadIn]
+    pylons: list[Pylon]
     tunnels: list[Tunnel]
 
 

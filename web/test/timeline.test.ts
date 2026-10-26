@@ -102,6 +102,7 @@ function throughStationMotion(): Motion {
 	const segment = (from: number, to: number) => ({
 		coordinates: [from, latitude, to, latitude],
 		heights_dm: [5400, 5400],
+		ropeway: null,
 		overview_coordinates: [from, latitude, to, latitude],
 		length_m: 5_000,
 		route: "track" as const,

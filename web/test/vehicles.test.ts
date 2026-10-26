@@ -32,6 +32,7 @@ function vehicleAt(headM: number, path = new PathMeasure([BERN, east(2000)]), ov
 		isInsideTunnel: false,
 		legFrom: path.at(0).point,
 		legTo: path.at(path.lengthM).point,
+		ropeway: null,
 		...overrides,
 	};
 	return vehicle;
@@ -151,6 +152,15 @@ describe("motion models", () => {
 		expect(cabin?.yawDeg).toBeCloseTo(90, 3);
 	});
 
+	it("on the terrain, hangs a cabin below its rope's own height, over the pylons", () => {
+		const rope = new PathMeasure([BERN, east(1000), east(2000)], [1000, 1300, 1400]);
+		const [cabin] = new HangingFromCable(CABLE, 9).place(
+			vehicleAt(1000, rope, { layer: "aerial", ropeway: "gondola" }),
+			ON_TERRAIN,
+		);
+		expect(cabin?.position[2]).toBeCloseTo(1300 - 9, 1);
+	});
+
 	it("strings the rope from station to station at their altitudes on the terrain", () => {
 		const rope = cablePath([BERN[0], BERN[1], 1000], [...east(2000), 1600], TERRAIN);
 		expect(rope[0]?.[2]).toBe(1000 + CABLE.stationHeightM);
@@ -162,15 +172,15 @@ describe("motion models", () => {
 
 describe("vehicle kinds", () => {
 	it("needs exactly one kind for every moving layer", () => {
-		expect(() => new VehicleKindRegistry(standardVehicleKinds())).not.toThrow();
-		expect(() => new VehicleKindRegistry(standardVehicleKinds().slice(1))).toThrow(/long_rail/);
-		expect(() => new VehicleKindRegistry([...standardVehicleKinds(), new TrainKind("long_rail", INTERCITY)])).toThrow(
+		expect(() => new VehicleKindRegistry(standardVehicleKinds([]))).not.toThrow();
+		expect(() => new VehicleKindRegistry(standardVehicleKinds([]).slice(1))).toThrow(/long_rail/);
+		expect(() => new VehicleKindRegistry([...standardVehicleKinds([]), new TrainKind("long_rail", INTERCITY)])).toThrow(
 			/two vehicle kinds/,
 		);
 	});
 
 	it("draws every kind every frame, so deck.gl keeps the same layers", () => {
-		const registry = new VehicleKindRegistry(standardVehicleKinds());
+		const registry = new VehicleKindRegistry(standardVehicleKinds([]));
 		const ids = registry.draw([vehicleAt(1000)], FRAME).map((layer) => layer.id);
 		expect(new Set(ids).size).toBe(ids.length);
 		expect(ids).toEqual(registry.draw([], FRAME).map((layer) => layer.id));
@@ -178,11 +188,27 @@ describe("vehicle kinds", () => {
 	});
 
 	it("poses only the vehicles in view", () => {
-		const registry = new VehicleKindRegistry(standardVehicleKinds());
+		const registry = new VehicleKindRegistry(standardVehicleKinds([]));
 		const carsOf = (frame: VehicleFrame) =>
 			dataOf(registry.draw([vehicleAt(1000)], frame).find((layer) => layer.id.includes("long_rail-cars")));
 		expect(carsOf(FRAME)).toHaveLength(13);
 		expect(carsOf({ ...FRAME, visibleArea: [0, 0, 1, 1] })).toHaveLength(0);
+	});
+
+	it("hangs a gondola on a gondola rope and a large cabin where OSM has no rope", () => {
+		const kind = standardVehicleKinds([]).find((candidate) => candidate.layer === "aerial");
+		const layers = kind?.draw(
+			[
+				vehicleAt(1000, undefined, { layer: "aerial", ropeway: "gondola" }),
+				vehicleAt(1000, undefined, { layer: "aerial", ropeway: null }),
+			],
+			{ ...FRAME, metresPerPixel: 0.05 }, // close enough to draw even a gondola in detail
+		);
+		const posesFor = (ropeway: string) =>
+			dataOf(layers?.find((layer) => layer.id.includes(ropeway) && layer.id.endsWith("tinted")));
+		expect(posesFor("gondola")).toHaveLength(1);
+		expect(posesFor("cable_car")).toHaveLength(1);
+		expect(posesFor("chair_lift")).toHaveLength(0);
 	});
 
 	it("hides trains while they are under the mountain", () => {

@@ -43,6 +43,7 @@ from smb_pipeline.tunnels import drone_tunnels
 DEFAULT_TEXTURE_BINS: Final = 8
 RAIL_KINDS: Final[frozenset[NetworkKind]] = frozenset({"rail", "mountain_rail", "funicular"})
 FERRY_KINDS: Final[frozenset[NetworkKind]] = frozenset({"ferry"})
+ROPEWAY_KINDS: Final[frozenset[NetworkKind]] = frozenset({"aerialway"})
 # Piers sit at the shore while OSM ferry routes often start a little way out on the water.
 FERRY_SNAP_RADIUS_M: Final = 800.0
 
@@ -112,11 +113,12 @@ def _motion(
 ) -> tuple[Motion, RoutingReport]:
     positions = station_positions(connection)
     locator = stations.StationLocator(connection)
-    extract = read_osm(osm_pbf, kinds=RAIL_KINDS | FERRY_KINDS)
+    extract = read_osm(osm_pbf, kinds=RAIL_KINDS | FERRY_KINDS | ROPEWAY_KINDS)
     rail_graph = build_network(
         (line for line in extract.lines if line.kind in RAIL_KINDS), locator.nearest_name
     )
     ferry_graph = build_network(line for line in extract.lines if line.kind == "ferry")
+    rope_graph = build_network(line for line in extract.lines if line.kind in ROPEWAY_KINDS)
     rail = _bind(NetworkRouter(rail_graph, "track"), positions)
     ferry = _bind(NetworkRouter(ferry_graph, "ferry_route", FERRY_SNAP_RADIUS_M), positions)
     routers: dict[MovingLayer, Router] = {
@@ -125,7 +127,10 @@ def _motion(
         "mountain_rail": rail,
         "funicular": rail,
         "boat": ferry,
-        "aerial": straight_router(positions),
+        # Cable cars ride their OSM ropes; where none is mapped, a straight line between stations.
+        "aerial": _or_straight(
+            _bind(NetworkRouter(rope_graph, "rope"), positions), straight_router(positions)
+        ),
     }
     legs = leg_rows(connection)
     paths = route_unique_pairs(legs, routers)
@@ -139,7 +144,7 @@ def _motion(
         paths,
         rail_graph.tunnels,
         LeadInBuilder(rail_graph),
-        HeightProfiler(terrain, rail_graph),
+        HeightProfiler(terrain, {"track": rail_graph, "rope": rope_graph}),
     )
     return motion, report
 
@@ -149,6 +154,16 @@ def _pairs_outside_extract(
 ) -> Counter[MovingLayer]:
     requested = {segment_key(leg)[0] for leg in legs}
     return Counter(layer for key in requested - paths.keys() for layer in [key[2]])
+
+
+def _or_straight(router: Router, fallback: Router) -> Router:
+    """`router`, with `fallback` for the pairs it leaves out (stations off its network)."""
+
+    def route(pairs: Sequence[StopPair]) -> dict[StopPair, RoutedPath]:
+        paths = router(pairs)
+        return paths | fallback([pair for pair in pairs if pair not in paths])
+
+    return route
 
 
 def _bind(router: NetworkRouter, positions: Mapping[str, Place]) -> Router:

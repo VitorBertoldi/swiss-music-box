@@ -9,18 +9,20 @@ track can't simply follow it. Per path:
 4. fill dips steeper than the line could climb (an embankment);
 5. outside tunnels, never sink below the drawn ground, so a vehicle on the 3D map is seen.
 
-Boats float at the lake's level; cable cars only need the height of their two stations.
+Boats float at the lake's level. For cable cars the height is the rope's: from the stations
+over the tops of OSM's pylons, sagging between them and never so low a cabin would touch ground.
 """
 
 import itertools
 import math
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
 import numpy as np
 
-from smb_pipeline.contract import MovingLayer
+from smb_pipeline.contract import MovingLayer, Ropeway, RouteKind
 from smb_pipeline.dem import HeightModel
 from smb_pipeline.geo import FloatArray, Place, simplify_indices, wgs84_from_lv95_arrays
 from smb_pipeline.network import NetworkGraph, Structure
@@ -32,6 +34,14 @@ SAMPLE_SPACING_M: Final = 25.0
 VERTICAL_TOLERANCE_M: Final = 0.5
 # Track sits a little above the drawn ground, so it isn't half-buried where they agree.
 CLEARANCE_M: Final = 0.3
+# Where a rope leaves a station building.
+STATION_ROPE_HEIGHT_M: Final = 12.0
+# A rope sags about 3 % of a span between two supports, and on long spans at most this much.
+ROPE_SAG_PER_SPAN: Final = 0.03
+MAX_ROPE_SAG_M: Final = 40.0
+# A cabin hangs about 9 m below its rope, so a rope this high keeps its floor 3 m off the
+# ground anywhere: as high as at a station, where the cabin floats just above the platform.
+MIN_ROPE_CLEARANCE_M: Final = STATION_ROPE_HEIGHT_M
 MIN_SAMPLES_TO_SMOOTH: Final = 3
 
 SMOOTHING_WINDOW_M: Final[dict[MovingLayer, float]] = {
@@ -55,11 +65,20 @@ MAX_GRADE: Final[dict[MovingLayer, float | None]] = {
 
 
 @dataclass(frozen=True, slots=True)
+class PylonSpot:
+    place: Place
+    base_m: float
+    top_m: float
+
+
+@dataclass(frozen=True, slots=True)
 class Profile:
     """A path reduced to the points that describe both its shape and its height."""
 
     places: list[Place]
     heights_m: list[float]
+    ropeway: Ropeway | None = None
+    pylons: tuple[PylonSpot, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,20 +88,26 @@ class _Samples:
     """Distance from the first sample, per sample."""
     structures: list[Structure | None]
     """Per stretch between sample i and i + 1."""
+    corners: list[int]
+    """Sample index of each place the samples were made from."""
 
 
 class HeightProfiler:
     """Gives paths and lead-ins their heights over the terrain."""
 
-    def __init__(self, terrain: HeightModel, rail_graph: NetworkGraph) -> None:
+    def __init__(self, terrain: HeightModel, graphs: Mapping[RouteKind, NetworkGraph]) -> None:
+        """`graphs`: the network each kind of routed path was found on (track, rope)."""
         self._terrain = terrain
-        self._rail = rail_graph
+        self._graphs = graphs
 
     def profile(self, path: RoutedPath, layer: MovingLayer, tolerance_m: float) -> Profile:
         """`path` with heights, simplified to `tolerance_m` across and `VERTICAL_TOLERANCE_M` up."""
+        graph = self._graphs.get(path.route)
+        if layer == "aerial":
+            return self._rope(path, graph, tolerance_m)
         structures: list[Structure | None] = (
-            [self._rail.structure_between(a, b) for a, b in itertools.pairwise(path.nodes)]
-            if path.route == "track"
+            [graph.structure_between(a, b) for a, b in itertools.pairwise(path.nodes)]
+            if graph is not None and path.route == "track"
             else [None] * (len(path.points) - 1)
         )
         return self._profile(path.points, structures, layer, tolerance_m)
@@ -91,7 +116,51 @@ class HeightProfiler:
         self, places: Sequence[Place], layer: MovingLayer, tolerance_m: float
     ) -> Profile:
         """A lead-in or other path known only by its places (no bridges or tunnels marked)."""
+        if layer == "aerial" and places:
+            # Behind a ropeway station the rope stays at the station's height.
+            surface = self._surface(places)
+            return Profile(list(places), [float(h) + STATION_ROPE_HEIGHT_M for h in surface])
         return self._profile(places, [None] * max(0, len(places) - 1), layer, tolerance_m)
+
+    def _rope(self, path: RoutedPath, graph: NetworkGraph | None, tolerance_m: float) -> Profile:
+        """The rope's height along a ropeway: over its pylons' tops, sagging in between."""
+        rope_graph = graph if path.route == "rope" else None
+        supports = (
+            [rope_graph.support_at(node) for node in path.nodes]
+            if rope_graph is not None
+            else [0.0] * len(path.points)
+        )
+        supports[0] = supports[0] or STATION_ROPE_HEIGHT_M
+        supports[-1] = supports[-1] or STATION_ROPE_HEIGHT_M
+        samples = _densify(path.points, [None] * (len(path.points) - 1))
+        surface = self._surface(samples.places)
+        corners = list(zip(samples.corners, supports, strict=True))
+        held = [corner for corner, support in corners if support > 0]
+        tops = {
+            corner: float(surface[corner]) + support for corner, support in corners if support > 0
+        }
+        rope = np.maximum(rope_heights(samples.along_m, held, tops), surface + MIN_ROPE_CLEARANCE_M)
+        kept = simplify_indices(
+            [place.easting_m for place in samples.places],
+            [place.northing_m for place in samples.places],
+            tolerance_m,
+            heights=list(rope),
+            vertical_tolerance_m=VERTICAL_TOLERANCE_M,
+        )
+        ropeways = Counter(
+            ropeway
+            for a, b in itertools.pairwise(path.nodes)
+            if rope_graph is not None and (ropeway := rope_graph.ropeway_between(a, b)) is not None
+        )
+        return Profile(
+            [samples.places[i] for i in kept],
+            [float(rope[i]) for i in kept],
+            ropeway=ropeways.most_common(1)[0][0] if ropeways else None,
+            pylons=tuple(
+                PylonSpot(samples.places[corner], float(surface[corner]), tops[corner])
+                for corner in held[1:-1]
+            ),
+        )
 
     def _profile(
         self,
@@ -132,6 +201,18 @@ class HeightProfiler:
             heights = fill_dips(heights, samples.along_m, grade)
         underground = _inside(samples.structures, "tunnel")
         return np.where(underground, heights, np.maximum(heights, surface + CLEARANCE_M))
+
+
+def rope_heights(along_m: FloatArray, held: Sequence[int], tops: Mapping[int, float]) -> FloatArray:
+    """A rope hanging between supports at sample indices `held`, sagging in every span."""
+    rope = np.zeros_like(along_m)
+    for first, last in itertools.pairwise(held):
+        span_m = along_m[last] - along_m[first]
+        sag_m = min(MAX_ROPE_SAG_M, span_m * ROPE_SAG_PER_SPAN)
+        share = (along_m[first : last + 1] - along_m[first]) / span_m if span_m > 0 else 0.0
+        straight = tops[first] + share * (tops[last] - tops[first])
+        rope[first : last + 1] = straight - 4 * sag_m * share * (1 - share)
+    return rope
 
 
 def smoothed(
@@ -201,6 +282,7 @@ def _densify(places: Sequence[Place], structures: Sequence[Structure | None]) ->
     northings: list[float] = [places[0].northing_m]
     kept_places: list[Place | None] = [places[0]]
     sample_structures: list[Structure | None] = []
+    corners = [0]
     for (start, end), structure in zip(itertools.pairwise(places), structures, strict=True):
         pieces = max(1, math.ceil(math.dist(start.lv95, end.lv95) / SAMPLE_SPACING_M))
         for piece in range(1, pieces + 1):
@@ -209,6 +291,7 @@ def _densify(places: Sequence[Place], structures: Sequence[Structure | None]) ->
             northings.append(start.northing_m + share * (end.northing_m - start.northing_m))
             kept_places.append(end if piece == pieces else None)
             sample_structures.append(structure)
+        corners.append(len(kept_places) - 1)
     latitudes, longitudes = wgs84_from_lv95_arrays(np.array(eastings), np.array(northings))
     samples = [
         place
@@ -218,4 +301,4 @@ def _densify(places: Sequence[Place], structures: Sequence[Structure | None]) ->
     ]
     steps = np.hypot(np.diff(eastings), np.diff(northings))
     along = np.concatenate([[0.0], np.cumsum(steps)])
-    return _Samples(samples, along, sample_structures)
+    return _Samples(samples, along, sample_structures, corners)

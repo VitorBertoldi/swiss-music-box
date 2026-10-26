@@ -16,10 +16,11 @@ import osmium
 import shapely
 from osmium.geom import WKBFactory
 
+from smb_pipeline.contract import Ropeway
 from smb_pipeline.geo import FloatArray, lv95_from_wgs84_arrays
 
 IntArray = npt.NDArray[np.int64]
-NetworkKind = Literal["rail", "mountain_rail", "funicular", "ferry"]
+NetworkKind = Literal["rail", "mountain_rail", "funicular", "ferry", "aerialway"]
 
 RAILWAY_KINDS: Final[Mapping[str, NetworkKind]] = {
     "rail": "rail",
@@ -27,11 +28,24 @@ RAILWAY_KINDS: Final[Mapping[str, NetworkKind]] = {
     "narrow_gauge": "mountain_rail",
     "funicular": "funicular",
 }
+# Ropeways that carry timetabled passengers; goods lifts and ski drags don't.
+ROPEWAY_KINDS: Final[Mapping[str, Ropeway]] = {
+    "cable_car": "cable_car",
+    "gondola": "gondola",
+    "mixed_lift": "gondola",
+    "chair_lift": "chair_lift",
+}
+# OSM rarely tags a pylon's height (2 of ~11,800 in Switzerland); typical heights by ropeway.
+DEFAULT_PYLON_HEIGHT_M: Final[Mapping[Ropeway, float]] = {
+    "cable_car": 30.0,
+    "gondola": 15.0,
+    "chair_lift": 10.0,
+}
 NAME_TAGS: Final = ("tunnel:name", "name", "name:de", "name:fr", "name:it")
 SWITZERLAND_ISO_CODE: Final = "CH"
 MIN_POINTS_PER_LINE: Final = 2
 # Let pyosmium skip every other object in C++ before Python sees it.
-NETWORK_KEYS: Final = ("railway", "route")
+NETWORK_KEYS: Final = ("railway", "route", "aerialway")
 BORDER_KEY: Final = "boundary"
 
 
@@ -49,6 +63,9 @@ class OsmLine:
     is_tunnel: bool = False
     is_bridge: bool = False
     name: str | None = None
+    ropeway: Ropeway | None = None
+    support_heights_m: FloatArray | None = None
+    """Per node of a ropeway: the height of the pylon standing there, 0 where there is none."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +90,8 @@ def classify_line(tags: Mapping[str, str]) -> NetworkKind | None:
         return "mountain_rail" if is_rack and kind == "rail" else kind
     if tags.get("route") == "ferry":
         return "ferry"
+    if tags.get("aerialway") in ROPEWAY_KINDS:
+        return "aerialway"
     return None
 
 
@@ -114,16 +133,23 @@ def _records(
     if with_border:
         processor = processor.with_areas(osmium.filter.TagFilter(("boundary", "administrative")))
     wkb = WKBFactory()
+    # A PBF file lists nodes before ways, so every pylon is known by the time its ropeway comes.
+    pylon_heights: dict[int, float | None] = {}
     for obj in processor:
-        if isinstance(obj, osmium.osm.Way):
-            line = _line(obj, kinds)
+        if isinstance(obj, osmium.osm.Node):
+            if obj.tags.get("aerialway") == "pylon":
+                pylon_heights[obj.id] = _metres(obj.tags.get("height"))
+        elif isinstance(obj, osmium.osm.Way):
+            line = _line(obj, kinds, pylon_heights)
             if line is not None:
                 yield line
         elif isinstance(obj, osmium.osm.Area) and is_switzerland(dict(obj.tags)):
             yield _area(obj, wkb)
 
 
-def _line(way: osmium.osm.Way, kinds: frozenset[NetworkKind]) -> OsmLine | None:
+def _line(
+    way: osmium.osm.Way, kinds: frozenset[NetworkKind], pylon_heights: Mapping[int, float | None]
+) -> OsmLine | None:
     tags = dict(way.tags)
     kind = classify_line(tags)
     if kind is None or kind not in kinds:
@@ -134,6 +160,16 @@ def _line(way: osmium.osm.Way, kinds: frozenset[NetworkKind]) -> OsmLine | None:
     latitudes = np.array([node.lat for node in located])
     longitudes = np.array([node.lon for node in located])
     eastings, northings = lv95_from_wgs84_arrays(latitudes, longitudes)
+    ropeway = ROPEWAY_KINDS.get(tags.get("aerialway", "")) if kind == "aerialway" else None
+    supports = None
+    if ropeway is not None:
+        default_m = DEFAULT_PYLON_HEIGHT_M[ropeway]
+        supports = np.array(
+            [
+                (pylon_heights[node.ref] or default_m) if node.ref in pylon_heights else 0.0
+                for node in located
+            ]
+        )
     return OsmLine(
         osm_id=way.id,
         kind=kind,
@@ -145,6 +181,8 @@ def _line(way: osmium.osm.Way, kinds: frozenset[NetworkKind]) -> OsmLine | None:
         is_tunnel=tags.get("tunnel") == "yes",
         is_bridge=tags.get("bridge") not in (None, "no"),
         name=first_name(tags),
+        ropeway=ropeway,
+        support_heights_m=supports,
     )
 
 
@@ -155,3 +193,13 @@ def _area(area: osmium.osm.Area, wkb: WKBFactory) -> OsmArea:
     if not isinstance(geometry, shapely.MultiPolygon):
         raise ValueError(f"OSM area {area.id} is not a polygon")
     return OsmArea(name=SWITZERLAND_ISO_CODE, geometry=geometry)
+
+
+def _metres(value: str | None) -> float | None:
+    """A height tag ("25", "25 m") in metres, or None when missing or unreadable."""
+    if value is None:
+        return None
+    try:
+        return float(value.strip().removesuffix("m").strip())
+    except ValueError:
+        return None
