@@ -36,6 +36,10 @@ switches the camera to **free**. Vehicles are computed every frame from the exac
 geometry: a train has a body of its real length (an IC ~400 m), eases in and out of stations,
 waits at platforms and disappears into tunnels.
 
+From zoom 14 each kind of vehicle is drawn as what it is (`web/src/vehicles/`): trains as a row of
+3D cars that bends with the track, boats as a hull with a wake, cable cars as a cabin hanging from
+a sagging cable, funiculars as one long car. Further out they stay dots with trails.
+
 A view can be shared as a link: `?view=longitude,latitude,zoom,pitch,bearing`, e.g.
 
 - Zürich HB from above the rooftops: `?view=8.5402,47.3779,16,60,-30`
@@ -68,9 +72,10 @@ Design patterns, where they earn their place:
 |---|---|
 | Pipeline of named steps + **Facade** | `smb build` / `smb relief` → `build_day`, `build_relief` |
 | **Adapter** | `osm.py` (the only module that touches pyosmium); `map/mapView.ts` (the only one that touches MapLibre); `ScoreSink` outputs (Tone, Web MIDI, .mid) |
+| **Strategy** + composition | `VehicleKind` (`TrainKind`, `BoatKind`, `CableCarKind`), each built from a `MotionModel` (where its parts stand) and a `Shape` (what they look like) |
 | **Strategy** | `Scene`, `CameraMode` (overview/tour/follow/free), `TileSource` (pmtiles/bundle), `Palette` (screen/projector), `PitchMapping`, `ElevationProvider` / `HeightModel` |
 | **Builder** | `NetworkGraphBuilder` (OSM ways → graph), `buildStyle` (MapLibre style), `VehicleTrackBuilder` (motion → GPU tracks) |
-| **Registry** | `SceneRegistry`: one list of scenes, numbered like their keys |
+| **Registry** | `SceneRegistry`: one list of scenes, numbered like their keys; `VehicleKindRegistry`: one kind per moving layer, checked at start-up |
 | **Observer** | `Player.onNote` → station flashes; visuals and sound stay decoupled |
 
 ## Projector
@@ -134,6 +139,8 @@ Uncheck *Browser synth* when Ableton makes the sound.
 
 - Speed along a leg follows the timetable with eased starts and stops, not real acceleration curves.
 - The tunnel glow is drawn along the tunnel's axis (portal to portal), not its exact curve.
+- The map is flat, so cable cars hang at a fixed 60 m above it instead of climbing the mountain, and
+  funiculars are not tilted; both need 3D terrain.
 - Buses and trams are sound textures only; moving them on OSM streets is the natural next step.
 - 3D terrain (stretch goal): MapLibre can drape the map over a DEM (`raster-dem` source) so mountains
   rise and cable cars climb; the relief image would become terrain tiles.

@@ -5,6 +5,7 @@ import type { Palette } from "../render/palette";
 import type { TunnelGlow } from "../render/tunnelLayers";
 import type { VehicleBuffers } from "../render/vehicleLayers";
 import type { VehicleTimeline } from "../render/vehicleTimeline";
+import type { VehicleKindRegistry } from "../vehicles/registry";
 
 export type SceneId = "living-map" | "long-exposure" | "calibration";
 
@@ -16,12 +17,16 @@ export interface FrameState {
 	readonly nowMs: number;
 	readonly palette: Palette;
 	readonly framesPerSecond: number;
+	/** Map zoom of this frame; scenes draw more detail closer in. */
+	readonly zoom: number;
 }
 
 /** The shared, prepared data every scene draws from. */
 export interface SceneAssets {
 	/** Exact vehicle positions, for the views you can zoom into. */
 	readonly timeline: VehicleTimeline;
+	/** How each kind of vehicle looks up close. */
+	readonly vehicleKinds: VehicleKindRegistry;
 	/** GPU trails on overview geometry; recoloured when the palette changes, hence a function. */
 	readonly overviewVehicles: () => VehicleBuffers;
 	readonly flashes: StationFlashes;

@@ -26,6 +26,9 @@ export interface VehicleState {
 	/** Where it travelled in the last `TAIL_MINUTES` of this leg, oldest point first. */
 	readonly tail: readonly LonLat[];
 	readonly isInsideTunnel: boolean;
+	/** Where the current leg starts and ends, in the direction of travel. */
+	readonly legFrom: LonLat;
+	readonly legTo: LonLat;
 }
 
 interface PreparedPath {
@@ -117,6 +120,8 @@ export class VehicleTimeline {
 			body: stretch(path, forward(rearM), headForwardM),
 			tail: stretch(path, forward(tailStartM), headForwardM),
 			isInsideTunnel: path.tunnelSpansM.some(([start, end]) => start <= headForwardM && headForwardM <= end),
+			legFrom: pointAt(path, forward(0)),
+			legTo: pointAt(path, forward(path.lengthM)),
 		};
 	}
 

@@ -18,6 +18,7 @@ const VIEWPORTS = [
 /**
  * Each shot: an optional `?view=` (longitude,latitude,zoom,pitch,bearing), the keys to press
  * (scene number, camera letter, P for projector), and the timetable minute to play from.
+ * A `still` shot is paused at exactly that minute, so a close-up finds its vehicle.
  */
 const SHOTS = [
 	{ name: "living-map-0730", keys: ["1", "o"], minute: 450 },
@@ -29,8 +30,14 @@ const SHOTS = [
 	{ name: "gotthard-north-portal", view: "8.66,46.82,13.5,45,160", keys: ["1"], minute: 1020 },
 	{ name: "follow-a-train", view: "7.4392,46.949,13,0,0", keys: ["1", "g"], minute: 480 },
 	{ name: "tour-projector-0700", keys: ["1", "t", "p"], minute: 420 },
+	// Vehicle kinds up close at 12:08, each view centred on a vehicle of that kind in the 21 Oct data.
+	{ name: "kind-ic-train", view: "8.49324,47.39049,16.5,60,-70", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-boat", view: "8.54956,47.33436,16.5,55,165", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-cable-car", view: "8.01392,46.62175,16.5,60,-150", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-funicular", view: "7.67875,46.64029,17,60,-103", keys: ["1"], minute: 728, still: true },
 ];
 const PLAY_MS = 2500; // long enough for trails to form and the scene crossfade to finish
+const STILL_PLAY_MS = 500; // a still shot plays briefly first: the first Play starts the outputs
 
 const [, , url = "http://localhost:4173/", outDir = "screens"] = process.argv;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,12 +82,13 @@ async function main() {
 }
 
 async function shoot(page, viewport, shot) {
-	await page.evaluate(`(() => {
-		const scrub = document.getElementById("scrub");
-		scrub.value = ${shot.minute};
-		scrub.dispatchEvent(new Event("change"));
-	})()`);
+	await seek(page, shot.minute);
 	await page.key(" ");
+	if (shot.still) {
+		await sleep(STILL_PLAY_MS);
+		await page.key(" ");
+		await seek(page, shot.minute);
+	}
 	await sleep(PLAY_MS);
 	const readout = await page.evaluate(
 		"[document.getElementById('clock').textContent, document.getElementById('rate').textContent, document.getElementById('caption').textContent].join(' ')",
@@ -92,6 +100,14 @@ async function shoot(page, viewport, shot) {
 	const { data } = await page.send("Page.captureScreenshot", { format: "png" });
 	writeFileSync(file, Buffer.from(data, "base64"));
 	console.log(`${file}  ${readout}  ${fps} fps (software WebGL)`);
+}
+
+async function seek(page, minute) {
+	await page.evaluate(`(() => {
+		const scrub = document.getElementById("scrub");
+		scrub.value = ${minute};
+		scrub.dispatchEvent(new Event("change"));
+	})()`);
 }
 
 async function connect() {

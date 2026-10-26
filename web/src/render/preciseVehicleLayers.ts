@@ -11,7 +11,7 @@ const BODY_WIDTH_M = 4; // about a train's width, visible when zoomed into a str
 const BODY_MIN_WIDTH_PX = 2.5;
 const HEAD_RADIUS_PX = 2.5; // keeps every vehicle visible as a dot at country scale
 
-/** Layers for vehicles at their exact positions: fading tail, body, and a head dot. */
+/** Vehicles at their exact positions, drawn schematically: fading tail, body, and a head dot. */
 export function preciseVehicleLayers(
 	vehicles: readonly VehicleState[],
 	palette: Palette,
@@ -19,21 +19,9 @@ export function preciseVehicleLayers(
 	idPrefix: string,
 	beforeId: string,
 ): Layer[] {
-	const colourOf = (vehicle: VehicleState): Rgba =>
-		withAlpha(palette.vehicles[vehicle.layer], vehicle.isInsideTunnel ? palette.insideTunnelAlpha : 1);
+	const colourOf = (vehicle: VehicleState): Rgba => vehicleColour(vehicle, palette);
 	return [
-		new PathLayer<VehicleState, OverlayProps>({
-			id: `${idPrefix}-vehicle-tails`,
-			data: vehicles,
-			getPath: (vehicle) => vehicle.tail as LonLat[],
-			getColor: (vehicle) => fadingColours(colourOf(vehicle), vehicle.tail.length),
-			getWidth: TAIL_WIDTH_PX,
-			widthUnits: "pixels",
-			capRounded: true,
-			jointRounded: true,
-			opacity,
-			beforeId,
-		}),
+		vehicleTailLayer(vehicles, palette, opacity, idPrefix, beforeId),
 		new PathLayer<VehicleState, OverlayProps>({
 			id: `${idPrefix}-vehicle-bodies`,
 			data: vehicles,
@@ -60,8 +48,34 @@ export function preciseVehicleLayers(
 	];
 }
 
+/** The fading streak behind each vehicle: where it was over the last few minutes. */
+export function vehicleTailLayer(
+	vehicles: readonly VehicleState[],
+	palette: Palette,
+	opacity: number,
+	idPrefix: string,
+	beforeId: string,
+): Layer {
+	return new PathLayer<VehicleState, OverlayProps>({
+		id: `${idPrefix}-vehicle-tails`,
+		data: vehicles,
+		getPath: (vehicle) => vehicle.tail as LonLat[],
+		getColor: (vehicle) => fadingColours(vehicleColour(vehicle, palette), vehicle.tail.length),
+		getWidth: TAIL_WIDTH_PX,
+		widthUnits: "pixels",
+		capRounded: true,
+		jointRounded: true,
+		opacity,
+		beforeId,
+	});
+}
+
+function vehicleColour(vehicle: VehicleState, palette: Palette): Rgba {
+	return withAlpha(palette.vehicles[vehicle.layer], vehicle.isInsideTunnel ? palette.insideTunnelAlpha : 1);
+}
+
 /** Per-vertex colours from nearly transparent (oldest) to full (current position). */
-function fadingColours(colour: Rgba, vertexCount: number): Rgba[] {
+export function fadingColours(colour: Rgba, vertexCount: number): Rgba[] {
 	return Array.from({ length: vertexCount }, (_, vertex) => {
 		const age = vertexCount <= 1 ? 1 : vertex / (vertexCount - 1);
 		return withAlpha(colour, TAIL_START_ALPHA + (1 - TAIL_START_ALPHA) * age);

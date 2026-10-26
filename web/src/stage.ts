@@ -61,7 +61,13 @@ export class Stage {
 		const view = this.camera.viewAt({ minute, current: this.map.pose() });
 		if (view !== null) this.map.moveTo(toPose(view, this.map.widthPx()));
 
-		const frame = { minute, nowMs, palette: this.palette, framesPerSecond: this.framesPerSecond };
+		const frame = {
+			minute,
+			nowMs,
+			palette: this.palette,
+			framesPerSecond: this.framesPerSecond,
+			zoom: this.map.pose().zoom,
+		};
 		const fadeIn = this.fadeInProgress(nowMs);
 		const layers: Layer[] = this.scene.layers(frame, fadeIn);
 		if (this.fadingOut !== null) layers.unshift(...this.fadingOut.scene.layers(frame, 1 - fadeIn));

@@ -36,6 +36,7 @@ import { DEFAULT_SETTINGS, type Settings, SettingsControls } from "./ui/settings
 import { TransportControls } from "./ui/transport";
 import { CAMERA_CHOICES, ViewControls } from "./ui/view";
 import { VoiceToggles } from "./ui/voices";
+import { standardVehicleKinds, VehicleKindRegistry } from "./vehicles/registry";
 
 const DATA_URL = "data";
 const SERVICE_DATE = "2026-10-21";
@@ -84,6 +85,7 @@ async function main(): Promise<void> {
 	player.onNote((note, atMs) => flashes.add(note, atMs));
 	const assets: SceneAssets = {
 		timeline,
+		vehicleKinds: new VehicleKindRegistry(standardVehicleKinds()),
 		overviewVehicles: () => overviewVehicles,
 		flashes,
 		tunnels: new TunnelGlow(show.motion.tunnels, show.day.tunnels),
