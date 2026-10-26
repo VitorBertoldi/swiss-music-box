@@ -1,4 +1,6 @@
 import type { Layer } from "@deck.gl/core";
+import type { LonLatBox } from "../map/mapView";
+import type { LonLat } from "../render/lonLat";
 import type { MovingLayer } from "../render/palette";
 import type { VehicleState } from "../render/vehicleTimeline";
 import { BoatKind } from "./boatKind";
@@ -40,10 +42,19 @@ export class VehicleKindRegistry {
 		if (missing.length > 0) throw new Error(`no vehicle kind for ${missing.join(", ")}`);
 	}
 
-	/** Every vehicle drawn by its own kind. Each kind always gets a call, so layer ids stay stable. */
+	/**
+	 * Every vehicle in view drawn by its own kind; the rest aren't posed at all. Each kind always
+	 * gets a call, so layer ids stay stable.
+	 */
 	draw(vehicles: readonly VehicleState[], frame: VehicleFrame): Layer[] {
 		const byLayer = new Map<MovingLayer, VehicleState[]>(MOVING_LAYERS.map((layer) => [layer, []]));
-		for (const vehicle of vehicles) byLayer.get(vehicle.layer)?.push(vehicle);
+		for (const vehicle of vehicles) {
+			if (isInside(vehicle.head, frame.visibleArea)) byLayer.get(vehicle.layer)?.push(vehicle);
+		}
 		return [...this.kinds.values()].flatMap((kind) => kind.draw(byLayer.get(kind.layer) ?? [], frame));
 	}
+}
+
+function isInside([longitude, latitude]: LonLat, [west, south, east, north]: LonLatBox): boolean {
+	return longitude >= west && longitude <= east && latitude >= south && latitude <= north;
 }

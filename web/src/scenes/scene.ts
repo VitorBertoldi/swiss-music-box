@@ -1,5 +1,6 @@
 import type { Layer } from "@deck.gl/core";
-import type { MapMode } from "../map/mapView";
+import type { LonLatBox, MapMode } from "../map/mapView";
+import type { Elevation } from "../render/elevation";
 import type { StationFlashes } from "../render/flashes";
 import type { Palette } from "../render/palette";
 import type { TunnelGlow } from "../render/tunnelLayers";
@@ -21,6 +22,10 @@ export interface FrameState {
 	readonly zoom: number;
 	/** Ground metres per screen pixel at the centre of the view. */
 	readonly metresPerPixel: number;
+	/** Whether the map stands on the 3D terrain or lies flat. */
+	readonly elevation: Elevation;
+	/** What the camera sees, with a margin; vehicles outside it needn't be posed. */
+	readonly visibleArea: LonLatBox;
 }
 
 /** The shared, prepared data every scene draws from. */

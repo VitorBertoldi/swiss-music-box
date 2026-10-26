@@ -5,7 +5,7 @@ import type { Tunnel } from "../contract/motion";
 import type { OverlayProps } from "../map/overlayProps";
 import { at } from "../music/collections";
 import { distanceM, type LonLat, toLonLats } from "./lonLat";
-import type { Palette } from "./palette";
+import type { LayerFrame } from "./preciseVehicleLayers";
 
 const BASE_GLOW_WIDTH_PX = 2;
 const MAX_EXTRA_GLOW_WIDTH_PX = 5;
@@ -38,15 +38,12 @@ export class TunnelGlow {
 		});
 	}
 
-	/** The glow goes below the map labels (`beneathLabels`); tunnel names stay on top. */
-	layers(
-		minute: number,
-		palette: Palette,
-		opacity: number,
-		showLabels: boolean,
-		idPrefix: string,
-		beneathLabels: string,
-	): Layer[] {
+	/**
+	 * The glow goes below the map labels; tunnel names stay on top. On the 3D terrain the tunnel
+	 * runs inside the mountain, so its glow shows through the ground like an X-ray.
+	 */
+	layers(minute: number, frame: LayerFrame, showLabels: boolean): Layer[] {
+		const { palette, opacity, idPrefix, beforeId, elevation } = frame;
 		const wholeMinute = Math.floor(minute);
 		const lit = this.tunnels.filter((tunnel) => at(tunnel.occupancy, wholeMinute) > 0);
 		const glow = (tunnel: LitTunnel): number => Math.min(1, at(tunnel.occupancy, wholeMinute) / TRAINS_FOR_FULL_GLOW);
@@ -62,7 +59,8 @@ export class TunnelGlow {
 				capRounded: true,
 				opacity,
 				updateTriggers: { getWidth: wholeMinute, getColor: wholeMinute },
-				beforeId: beneathLabels,
+				parameters: elevation.isTerrain ? { depthCompare: "always" } : {},
+				beforeId,
 			}),
 		];
 		if (showLabels) {

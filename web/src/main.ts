@@ -70,6 +70,8 @@ async function main(): Promise<void> {
 	const sharedView = viewFromSearch(location.search);
 	const startPose = sharedView ?? toPose(SWITZERLAND_VIEW, container.clientWidth);
 	const map = await MapView.create(container, styleFor(palette), startPose);
+	// Locally the map stands on the 3D terrain; the shared link has none and stays flat.
+	map.showTerrain(map.hasTerrain);
 	const timeline = new VehicleTimeline(show.motion);
 	const overviewTracks = new VehicleTrackBuilder(show.motion).build();
 	const packedDay = packTracks(overviewTracks.all);

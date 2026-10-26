@@ -31,6 +31,11 @@ export interface VehicleState {
 	/** The run the vehicle travels (lead-in and legs as one path), and how far along it its front is. */
 	readonly path: PathMeasure;
 	readonly headM: number;
+	/** Where along the run the trail behind the vehicle starts. */
+	readonly tailStartM: number;
+	/** Where along the run the current leg starts and ends. */
+	readonly legStartM: number;
+	readonly legEndM: number;
 	/** Where the current leg starts and ends, in the direction of travel. */
 	readonly legFrom: LonLat;
 	readonly legTo: LonLat;
@@ -120,6 +125,9 @@ export class VehicleTimeline {
 			layer,
 			path: run.path,
 			headM,
+			tailStartM,
+			legStartM: startM,
+			legEndM: startM + lengthM,
 			head: run.path.at(headM).point,
 			body: run.path.stretch(headM - BODY_LENGTH_M[layer], headM),
 			tail: run.path.stretch(tailStartM, headM),

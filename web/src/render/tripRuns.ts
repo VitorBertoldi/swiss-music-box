@@ -49,10 +49,11 @@ export class TripRuns {
 		const count = at(this.motion.trips.leg_count, trip);
 		const placed = new Map<number, LegOnRun>();
 		let points: LonLat[] = [];
+		let heights: number[] = [];
 		let legStarts: [leg: number, pointIndex: number][] = [];
 		const finishRun = (): void => {
 			if (legStarts.length === 0) return;
-			const run: TripRun = { path: new PathMeasure(points) };
+			const run: TripRun = { path: new PathMeasure(points, heights) };
 			const ends = [...legStarts.slice(1).map(([, index]) => index), points.length - 1];
 			legStarts.forEach(([leg, startIndex], i) => {
 				const startM = run.path.distanceAtPoint(startIndex);
@@ -63,21 +64,36 @@ export class TripRuns {
 			const leadIn = at(legs.lead_in, leg);
 			if (leadIn !== NO_LEAD_IN || legStarts.length === 0) {
 				finishRun();
-				points = leadIn === NO_LEAD_IN ? [] : toLonLats(at(lead_ins, leadIn).coordinates);
+				const lead = leadIn === NO_LEAD_IN ? undefined : at(lead_ins, leadIn);
+				points = lead === undefined ? [] : toLonLats(lead.coordinates);
+				heights = lead === undefined ? [] : lead.heights_dm.map(metres);
 				legStarts = [];
 			}
-			const segment = toLonLats(at(segments, at(legs.segment, leg)).coordinates);
-			const travelled = at(legs.reversed, leg) ? segment.reverse() : segment;
+			const segment = at(segments, at(legs.segment, leg));
+			const isReversed = at(legs.reversed, leg);
+			const travelled = inTravelOrder(toLonLats(segment.coordinates), isReversed);
+			const travelledHeights = inTravelOrder(segment.heights_dm.map(metres), isReversed);
 			// A leg continuing the run starts where the previous one ended: if it leaves from
 			// another platform track, the short way across the station is part of its departure.
 			const continuesRun = legStarts.length > 0;
 			const sharesFirstPoint = sameLonLat(points.at(-1), travelled[0]);
 			legStarts.push([leg, continuesRun || sharesFirstPoint ? points.length - 1 : points.length]);
 			points.push(...(sharesFirstPoint ? travelled.slice(1) : travelled));
+			heights.push(...(sharesFirstPoint ? travelledHeights.slice(1) : travelledHeights));
 		}
 		finishRun();
 		return placed;
 	}
+}
+
+const DECIMETRES_PER_METRE = 10;
+
+function metres(decimetres: number): number {
+	return decimetres / DECIMETRES_PER_METRE;
+}
+
+function inTravelOrder<T>(items: T[], isReversed: boolean): T[] {
+	return isReversed ? items.reverse() : items;
 }
 
 function sameLonLat(a: LonLat | undefined, b: LonLat | undefined): boolean {

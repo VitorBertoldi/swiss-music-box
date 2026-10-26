@@ -1,5 +1,5 @@
 import { type LonLat, offsetLonLat } from "../render/lonLat";
-import type { Placement } from "./motion";
+import type { Pose3D } from "./motion";
 
 /** A corner of a footprint: longitude, latitude and height above the map in metres. */
 export type Corner = [longitude: number, latitude: number, heightM: number];
@@ -10,25 +10,26 @@ export interface Shape {
 	readonly heightM: number;
 	/** This shape, or a wider and taller copy if it is narrower than `minWidthM`. */
 	widened(minWidthM: number): Shape;
-	/** The outline of the part's underside, placed and turned as the placement says. */
-	footprint(placement: Placement): Corner[];
+	/** The outline of the part's underside, at its altitude, turned to its yaw (a footprint can't tilt). */
+	footprint(pose: Pose3D): Corner[];
 }
 
 /** Corners given in the part's own frame (metres ahead of and to the right of its centre). */
 type LocalOutline = readonly (readonly [aheadM: number, rightM: number])[];
 
-function placeOutline(outline: LocalOutline, placement: Placement): Corner[] {
-	const heading = (placement.headingDeg * Math.PI) / 180;
+function placeOutline(outline: LocalOutline, pose: Pose3D): Corner[] {
+	const [longitude, latitude, altitudeM] = pose.position;
+	const heading = (pose.yawDeg * Math.PI) / 180;
 	// Unit vectors (east, north) pointing ahead and to the right of the part.
 	const ahead = [Math.sin(heading), Math.cos(heading)] as const;
 	const right = [Math.cos(heading), -Math.sin(heading)] as const;
 	return outline.map(([aheadM, rightM]): Corner => {
 		const point: LonLat = offsetLonLat(
-			placement.centre,
+			[longitude, latitude],
 			aheadM * ahead[0] + rightM * right[0],
 			aheadM * ahead[1] + rightM * right[1],
 		);
-		return [point[0], point[1], placement.baseM];
+		return [point[0], point[1], altitudeM];
 	});
 }
 
@@ -68,8 +69,8 @@ export class Box implements Shape {
 		return size === null ? this : new Box(this.lengthM, ...size);
 	}
 
-	footprint(placement: Placement): Corner[] {
-		return placeOutline(this.outline, placement);
+	footprint(pose: Pose3D): Corner[] {
+		return placeOutline(this.outline, pose);
 	}
 }
 
@@ -102,7 +103,7 @@ export class Hull implements Shape {
 		return size === null ? this : new Hull(this.lengthM, ...size);
 	}
 
-	footprint(placement: Placement): Corner[] {
-		return placeOutline(this.outline, placement);
+	footprint(pose: Pose3D): Corner[] {
+		return placeOutline(this.outline, pose);
 	}
 }

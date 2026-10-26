@@ -16,6 +16,9 @@ export interface CameraPose {
 	readonly bearing: number;
 }
 
+/** A longitude/latitude box: west, south, east, north. */
+export type LonLatBox = readonly [west: number, south: number, east: number, north: number];
+
 /** Which groups of map layers are visible. */
 export type MapMode = "full" | "outline" | "none";
 
@@ -119,6 +122,19 @@ export class MapView {
 			pitch: this.map.getPitch(),
 			bearing: this.map.getBearing(),
 		};
+	}
+
+	/** The area the camera sees (its bounding box when tilted), grown by `margin` of its size. */
+	visibleArea(margin: number): LonLatBox {
+		const bounds = this.map.getBounds();
+		const growLongitude = (bounds.getEast() - bounds.getWest()) * margin;
+		const growLatitude = (bounds.getNorth() - bounds.getSouth()) * margin;
+		return [
+			bounds.getWest() - growLongitude,
+			bounds.getSouth() - growLatitude,
+			bounds.getEast() + growLongitude,
+			bounds.getNorth() + growLatitude,
+		];
 	}
 
 	widthPx(): number {

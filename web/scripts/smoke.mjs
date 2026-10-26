@@ -30,10 +30,11 @@ const SHOTS = [
 	{ name: "gotthard-north-portal", view: "8.66,46.82,13.5,45,160", keys: ["1"], minute: 1020 },
 	{ name: "follow-a-train", view: "7.4392,46.949,13,0,0", keys: ["1", "g"], minute: 480 },
 	{ name: "tour-projector-0700", keys: ["1", "t", "p"], minute: 420 },
-	{ name: "terrain-alps", view: "7.98,46.58,13,70,160", keys: ["1", "e"], minute: 450, still: true },
+	{ name: "terrain-alps", view: "7.98,46.58,13,70,160", keys: ["1"], minute: 450, still: true },
 	// Vehicle kinds up close at 12:08, each view centred on a vehicle of that kind in the 21 Oct data.
 	{ name: "kind-ic-train", view: "8.49324,47.39049,16.5,60,-70", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-ic-train-z15-top", view: "8.49324,47.39049,15,0,0", keys: ["1"], minute: 728, still: true },
+	{ name: "kind-ic-train-flat", view: "8.49324,47.39049,16.5,60,-70", keys: ["1", "e"], minute: 728, still: true },
 	{ name: "kind-ic-train-z17", view: "8.4885,47.3915,17.5,55,-70", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-boat", view: "8.54956,47.33436,16.5,55,165", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-cable-car", view: "8.01392,46.62175,16.5,60,-150", keys: ["1"], minute: 728, still: true },

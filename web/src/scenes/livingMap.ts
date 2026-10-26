@@ -1,10 +1,10 @@
 import type { Layer } from "@deck.gl/core";
-import { preciseVehicleLayers, vehicleTailLayer } from "../render/preciseVehicleLayers";
+import { type LayerFrame, preciseVehicleLayers, vehicleTailLayer } from "../render/preciseVehicleLayers";
 import type { FrameState, Scene, SceneAssets } from "./scene";
 
 /**
- * Zoom from which vehicles are drawn as solids (cars, hulls, cabins). At zoom 14 a 27 m train
- * car is about 8 pixels long; further out the solids would be specks, so dots read better.
+ * Zoom from which vehicles are drawn as what they are (cars, hulls, cabins). At zoom 14 a 27 m
+ * train car is about 8 pixels long; further out the solids would be specks, so dots read better.
  */
 export const VEHICLE_KINDS_MIN_ZOOM = 14;
 /** Up close the trail is only a hint of where a vehicle came from; the vehicle itself leads. */
@@ -23,24 +23,26 @@ export class LivingMapScene implements Scene {
 
 	layers(frame: FrameState, opacity: number): Layer[] {
 		const { timeline, vehicleKinds, tunnels, flashes, beneathLabels } = this.assets;
+		const drawing: LayerFrame = {
+			palette: frame.palette,
+			opacity,
+			idPrefix: this.id,
+			beforeId: beneathLabels,
+			elevation: frame.elevation,
+		};
 		const vehicles = timeline.vehiclesAt(frame.minute);
 		const vehicleLayers =
 			frame.zoom >= VEHICLE_KINDS_MIN_ZOOM
 				? [
-						vehicleTailLayer(vehicles, frame.palette, opacity * CLOSE_UP_TRAIL_OPACITY, this.id, beneathLabels),
+						vehicleTailLayer(vehicles, { ...drawing, opacity: opacity * CLOSE_UP_TRAIL_OPACITY }),
 						...vehicleKinds.draw(vehicles, {
-							palette: frame.palette,
-							opacity,
-							idPrefix: this.id,
-							beforeId: beneathLabels,
+							...drawing,
+							nowMs: frame.nowMs,
 							metresPerPixel: frame.metresPerPixel,
+							visibleArea: frame.visibleArea,
 						}),
 					]
-				: preciseVehicleLayers(vehicles, frame.palette, opacity, this.id, beneathLabels);
-		return [
-			...tunnels.layers(frame.minute, frame.palette, opacity, true, this.id, beneathLabels),
-			...vehicleLayers,
-			flashes.layer(frame.nowMs, frame.palette, opacity, this.id, beneathLabels),
-		];
+				: preciseVehicleLayers(vehicles, drawing);
+		return [...tunnels.layers(frame.minute, drawing, true), ...vehicleLayers, flashes.layer(frame.nowMs, drawing)];
 	}
 }

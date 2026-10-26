@@ -4,8 +4,8 @@ import type { Station } from "../contract/day";
 import type { OverlayProps } from "../map/overlayProps";
 import { at } from "../music/collections";
 import type { NoteLayer, ScoredNote } from "../music/types";
-import type { LonLat } from "./lonLat";
-import type { Palette } from "./palette";
+import { type LonLatHeight, placed } from "./elevation";
+import type { LayerFrame } from "./preciseVehicleLayers";
 
 const FLASH_LIFETIME_MS = 1100;
 const FLASH_START_RADIUS_PX = 3;
@@ -14,18 +14,20 @@ const FLASH_GROWTH_PX = 18;
 const MAX_FLASHES = 600;
 
 interface Flash {
-	readonly position: LonLat;
+	readonly position: LonLatHeight;
 	readonly layer: NoteLayer;
 	readonly atMs: number;
 }
 
 /** Rings that pulse out from a station each time it plays a note. */
 export class StationFlashes {
-	private readonly stationPositions: readonly LonLat[];
+	private readonly stationPositions: readonly LonLatHeight[];
 	private flashes: Flash[] = [];
 
 	constructor(stations: readonly Station[]) {
-		this.stationPositions = stations.map((station): LonLat => [station.longitude, station.latitude]);
+		this.stationPositions = stations.map(
+			(station): LonLatHeight => [station.longitude, station.latitude, station.elevation_m],
+		);
 	}
 
 	add(note: ScoredNote, atMs: number): void {
@@ -37,7 +39,8 @@ export class StationFlashes {
 		this.flashes = [];
 	}
 
-	layer(nowMs: number, palette: Palette, opacity: number, idPrefix: string, beneathLabels: string): Layer {
+	layer(nowMs: number, frame: LayerFrame): Layer {
+		const { palette, opacity, idPrefix, beforeId, elevation } = frame;
 		this.flashes = this.flashes.filter((flash) => nowMs - flash.atMs < FLASH_LIFETIME_MS);
 		// Notes are scheduled slightly ahead; show only those already heard.
 		const visible = this.flashes.filter((flash) => flash.atMs <= nowMs);
@@ -45,7 +48,7 @@ export class StationFlashes {
 		return new ScatterplotLayer<Flash, OverlayProps>({
 			id: `${idPrefix}-flashes`,
 			data: visible,
-			getPosition: (flash) => flash.position as LonLat,
+			getPosition: (flash) => placed(elevation, flash.position),
 			getRadius: (flash) => FLASH_START_RADIUS_PX + FLASH_GROWTH_PX * age(flash),
 			radiusUnits: "pixels",
 			stroked: true,
@@ -62,7 +65,7 @@ export class StationFlashes {
 			},
 			opacity,
 			updateTriggers: { getRadius: nowMs, getLineColor: nowMs, getFillColor: nowMs },
-			beforeId: beneathLabels,
+			beforeId,
 		});
 	}
 }

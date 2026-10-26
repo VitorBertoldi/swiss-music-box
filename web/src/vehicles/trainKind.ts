@@ -61,7 +61,7 @@ export class TrainKind implements VehicleKind {
 		const motion: MotionModel = new CarsAlongTrack(this.car.lengthM, gapM, this.carCount);
 		const shape = this.shape.widened(minimumWidthM(frame));
 		const colour = solidColour(frame.palette, this.layer);
-		const solids = solidsOf(aboveGround, motion, shape, colour, lighter(colour, FRONT_CAR_LIGHTER));
+		const solids = solidsOf(aboveGround, motion, shape, frame, colour, lighter(colour, FRONT_CAR_LIGHTER));
 		return [solidLayer(`${frame.idPrefix}-${this.layer}-cars`, solids, frame)];
 	}
 }

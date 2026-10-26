@@ -2,12 +2,15 @@ import type { Layer } from "@deck.gl/core";
 import type { CameraMode } from "./camera/camera";
 import { metresPerPixel, toPose } from "./camera/camera";
 import type { MapView } from "./map/mapView";
+import { FLAT_MAP, TERRAIN } from "./render/elevation";
 import type { Palette } from "./render/palette";
 import type { SceneRegistry } from "./scenes/registry";
-import type { Scene, SceneId } from "./scenes/scene";
+import type { FrameState, Scene, SceneId } from "./scenes/scene";
 
 const CROSSFADE_MS = 1200;
 const FPS_SMOOTHING = 0.05;
+/** Vehicles just outside the view are posed too, so they don't pop in at the edge. */
+const VISIBLE_AREA_MARGIN = 0.25;
 
 /**
  * Runs the frame loop's visual side: asks the active scene (and, while cross-fading, the
@@ -62,13 +65,15 @@ export class Stage {
 		if (view !== null) this.map.moveTo(toPose(view, this.map.widthPx()));
 
 		const pose = this.map.pose();
-		const frame = {
+		const frame: FrameState = {
 			minute,
 			nowMs,
 			palette: this.palette,
 			framesPerSecond: this.framesPerSecond,
 			zoom: pose.zoom,
 			metresPerPixel: metresPerPixel(pose.zoom, pose.centre[1]),
+			elevation: this.map.terrainShown ? TERRAIN : FLAT_MAP,
+			visibleArea: this.map.visibleArea(VISIBLE_AREA_MARGIN),
 		};
 		const fadeIn = this.fadeInProgress(nowMs);
 		const layers: Layer[] = this.scene.layers(frame, fadeIn);

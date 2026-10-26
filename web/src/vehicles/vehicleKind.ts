@@ -1,21 +1,19 @@
 import type { Layer } from "@deck.gl/core";
 import { SolidPolygonLayer } from "@deck.gl/layers";
+import type { LonLatBox } from "../map/mapView";
 import type { OverlayProps } from "../map/overlayProps";
 import type { MovingLayer, Palette, Rgba } from "../render/palette";
+import type { LayerFrame } from "../render/preciseVehicleLayers";
 import type { VehicleState } from "../render/vehicleTimeline";
-import type { MotionModel } from "./motion";
+import type { MotionModel, PoseContext } from "./motion";
 import type { Corner, Shape } from "./shape";
 
 /** What a vehicle kind needs to know about the frame it draws into. */
-export interface VehicleFrame {
-	readonly palette: Palette;
-	readonly opacity: number;
-	/** Prefix for deck.gl layer ids, unique per scene. */
-	readonly idPrefix: string;
-	/** The map layer to draw below, so labels stay on top. */
-	readonly beforeId: string;
+export interface VehicleFrame extends PoseContext, LayerFrame {
 	/** Ground metres per screen pixel, to keep small vehicles visible from further out. */
 	readonly metresPerPixel: number;
+	/** Vehicles outside this area aren't drawn. */
+	readonly visibleArea: LonLatBox;
 }
 
 /**
@@ -58,12 +56,13 @@ export function solidsOf(
 	vehicles: readonly VehicleState[],
 	motion: MotionModel,
 	shape: Shape,
+	context: PoseContext,
 	colour: Rgba,
 	frontColour: Rgba = colour,
 ): Solid[] {
 	return vehicles.flatMap((vehicle) =>
-		motion.place(vehicle).map((placement, part) => ({
-			footprint: shape.footprint(placement),
+		motion.place(vehicle, context).map((pose, part) => ({
+			footprint: shape.footprint(pose),
 			heightM: shape.heightM,
 			colour: part === 0 ? frontColour : colour,
 		})),
