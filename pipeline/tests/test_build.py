@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation
+from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation, FakeTerrain
 from pydantic import ValidationError
 
 from smb_pipeline.build import DayBuild, build_day
@@ -10,7 +10,9 @@ from smb_pipeline.contract import Day, Motion, NoteEvents
 
 @pytest.fixture(scope="module")
 def build() -> DayBuild:
-    return build_day(MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation(), texture_bins=4)
+    return build_day(
+        MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation(), FakeTerrain(), texture_bins=4
+    )
 
 
 def test_note_stations_are_those_with_sparse_layer_departures(build: DayBuild) -> None:

@@ -19,6 +19,7 @@ from smb_pipeline.contract import (
     TunnelPassage,
 )
 from smb_pipeline.geo import Place, flat_lonlat, simplify_indices
+from smb_pipeline.heights import HeightProfiler, Profile
 from smb_pipeline.lead_ins import LeadInBuilder, starts_new_run
 from smb_pipeline.network import Tunnel as NetworkTunnel
 from smb_pipeline.routing import RoutedPath, StopPair, straight_path
@@ -96,20 +97,22 @@ def build_motion(
     paths: Mapping[SegmentKey, RoutedPath],
     tunnels: Sequence[NetworkTunnel],
     lead_ins: LeadInBuilder,
+    heights: HeightProfiler,
 ) -> Motion:
     """Lays every trip's legs onto the routed paths (from `route_unique_pairs`)."""
     segment_index = {pair_key: index for index, pair_key in enumerate(paths)}
-    lead_in_places: list[list[Place]] = []
+    lead_in_profiles: list[Profile] = []
     lead_in_of_start: dict[tuple[int, bool], int] = {}
     lead_in_column: list[int] = []
 
-    def lead_in_for(segment: int, is_reversed: bool, path: RoutedPath) -> int:
+    def lead_in_for(segment: int, is_reversed: bool, path: RoutedPath, layer: MovingLayer) -> int:
         """The lead-in of a run starting with this segment, shared by all runs that do."""
         if (segment, is_reversed) not in lead_in_of_start:
             points = _in_travel_order(path.points, is_reversed)
             nodes = _in_travel_order(list(path.nodes), is_reversed) if path.route == "track" else []
-            lead_in_of_start[(segment, is_reversed)] = len(lead_in_places)
-            lead_in_places.append(lead_ins.lead_in(points, nodes))
+            places = lead_ins.lead_in(points, nodes)
+            lead_in_of_start[(segment, is_reversed)] = len(lead_in_profiles)
+            lead_in_profiles.append(heights.profile_places(places, layer, PRECISE_TOLERANCE_M))
         return lead_in_of_start[(segment, is_reversed)]
 
     trip_layers: list[MovingLayer] = []
@@ -135,7 +138,9 @@ def build_motion(
             points = _in_travel_order(path.points, is_reversed)
             starts_run = starts_new_run(previous_points, points)
             lead_in_column.append(
-                lead_in_for(segment_index[key], is_reversed, path) if starts_run else NO_LEAD_IN
+                lead_in_for(segment_index[key], is_reversed, path, leg.layer)
+                if starts_run
+                else NO_LEAD_IN
             )
             previous_points = points
             segment_column.append(segment_index[key])
@@ -145,7 +150,7 @@ def build_motion(
 
     return Motion(
         service_date=service_date,
-        segments=[_segment(path) for path in paths.values()],
+        segments=[_segment(path, layer, heights) for (_, _, layer), path in paths.items()],
         trips=Trips(layer=trip_layers, first_leg=first_legs, leg_count=leg_counts),
         legs=Legs(
             segment=segment_column,
@@ -155,8 +160,8 @@ def build_motion(
             lead_in=lead_in_column,
         ),
         lead_ins=[
-            LeadIn(coordinates=flat_lonlat(simplified(places, PRECISE_TOLERANCE_M)))
-            for places in lead_in_places
+            LeadIn(coordinates=flat_lonlat(profile.places), heights_dm=_decimetres(profile))
+            for profile in lead_in_profiles
         ],
         tunnels=[_contract_tunnel(tunnel) for tunnel in tunnels],
     )
@@ -217,10 +222,16 @@ def _midnight_shift(first_departure_minute: int) -> int:
     return MINUTES_PER_DAY if first_departure_minute >= MINUTES_PER_DAY else 0
 
 
-def _segment(path: RoutedPath) -> Segment:
+def _decimetres(profile: Profile) -> list[int]:
+    return [round(height * 10) for height in profile.heights_m]
+
+
+def _segment(path: RoutedPath, layer: MovingLayer, heights: HeightProfiler) -> Segment:
     length = max(path.length_m, 1.0)
+    profile = heights.profile(path, layer, PRECISE_TOLERANCE_M)
     return Segment(
-        coordinates=flat_lonlat(simplified(path.points, PRECISE_TOLERANCE_M)),
+        coordinates=flat_lonlat(profile.places),
+        heights_dm=_decimetres(profile),
         overview_coordinates=flat_lonlat(simplified(path.points, OVERVIEW_TOLERANCE_M)),
         length_m=round(path.length_m),
         route=path.route,

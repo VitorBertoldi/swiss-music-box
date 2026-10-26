@@ -14,6 +14,7 @@ def line(
     node_ids: list[int],
     *,
     is_tunnel: bool = False,
+    is_bridge: bool = False,
     name: str | None = None,
 ) -> OsmLine:
     """A rail line through LV95 points; ways sharing a node id are connected."""
@@ -29,6 +30,7 @@ def line(
         eastings=eastings,
         northings=northings,
         is_tunnel=is_tunnel,
+        is_bridge=is_bridge,
         name=name,
     )
 

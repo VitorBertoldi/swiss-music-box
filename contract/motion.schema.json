@@ -10,10 +10,18 @@
             "type": "number"
           },
           "type": "array"
+        },
+        "heights_dm": {
+          "description": "Height per point, in decimetres",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
         }
       },
       "required": [
-        "coordinates"
+        "coordinates",
+        "heights_dm"
       ],
       "title": "LeadIn",
       "type": "object"
@@ -76,6 +84,13 @@
           },
           "type": "array"
         },
+        "heights_dm": {
+          "description": "Height above sea level per point of `coordinates`, in decimetres",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
         "overview_coordinates": {
           "description": "The same path simplified to 15 m, for country-wide views",
           "items": {
@@ -105,6 +120,7 @@
       },
       "required": [
         "coordinates",
+        "heights_dm",
         "overview_coordinates",
         "length_m",
         "route",

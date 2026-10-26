@@ -21,6 +21,10 @@ export interface Segment {
    */
   coordinates: number[];
   /**
+   * Height above sea level per point of `coordinates`, in decimetres
+   */
+  heights_dm: number[];
+  /**
    * The same path simplified to 15 m, for country-wide views
    */
   overview_coordinates: number[];
@@ -77,6 +81,10 @@ export interface LeadIn {
    * Flat [longitude, latitude, ...] in travel order, ending where the run starts
    */
   coordinates: number[];
+  /**
+   * Height per point, in decimetres
+   */
+  heights_dm: number[];
 }
 /**
  * A long tunnel found in OpenStreetMap (`tunnel=yes` on rail ways).

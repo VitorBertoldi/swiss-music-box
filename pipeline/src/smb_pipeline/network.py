@@ -5,9 +5,9 @@ import math
 import re
 import unicodedata
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Final
+from typing import Final, Literal
 
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -19,7 +19,8 @@ from smb_pipeline.osm import OsmLine
 # A train can't turn sharper than this between two pieces of track; a walk along the track
 # follows the straightest branch at a switch and stops where only sharper turns remain.
 MAX_TRACK_TURN_DEG: Final = 30.0
-LONG_TUNNEL_MIN_LENGTH_M: Final = 3_000  # shorter tunnels pass in a blink at 8 min/s
+LONG_TUNNEL_MIN_LENGTH_M: Final = 3_000
+Structure = Literal["tunnel", "bridge"]  # shorter tunnels pass in a blink at 8 min/s
 TUBE_MERGE_DISTANCE_M: Final = 1_000
 
 
@@ -47,6 +48,11 @@ class NetworkGraph:
     edge_tunnel: dict[tuple[int, int], int] = field(repr=False)
     """Tunnel index for edges inside a long tunnel, keyed by (smaller, larger) node index."""
     node_locator: cKDTree = field(repr=False)
+    structure_edges: Mapping[tuple[int, int], Structure] = field(default_factory=dict, repr=False)
+    """Edges on any bridge or in any tunnel: there the track doesn't follow the ground."""
+
+    def structure_between(self, node_a: int, node_b: int) -> Structure | None:
+        return self.structure_edges.get((min(node_a, node_b), max(node_a, node_b)))
 
     def tunnel_on_edge(self, node_a: int, node_b: int) -> int | None:
         return self.edge_tunnel.get((min(node_a, node_b), max(node_a, node_b)))
@@ -108,6 +114,7 @@ class NetworkGraphBuilder:
         self._edge_lengths: dict[tuple[int, int], float] = {}
         """Length of each edge, keyed by (smaller, larger) node index, so duplicates collapse."""
         self._tunnel_edges: dict[tuple[int, int], int] = {}
+        self._structure_edges: dict[tuple[int, int], Structure] = {}
 
     def add_line(self, line: OsmLine, tunnel_index: int | None = None) -> None:
         nodes = [
@@ -131,6 +138,10 @@ class NetworkGraphBuilder:
             )
             if tunnel_index is not None:
                 self._tunnel_edges[edge] = tunnel_index
+            if line.is_tunnel:
+                self._structure_edges[edge] = "tunnel"
+            elif line.is_bridge:
+                self._structure_edges[edge] = "bridge"
 
     def build(self, tunnels: Sequence[Tunnel]) -> NetworkGraph:
         node_count = len(self._eastings)
@@ -151,6 +162,7 @@ class NetworkGraphBuilder:
             lengths=lengths,
             tunnels=tunnels,
             edge_tunnel=self._tunnel_edges,
+            structure_edges=self._structure_edges,
             node_locator=cKDTree(np.column_stack([eastings, northings])),
         )
 

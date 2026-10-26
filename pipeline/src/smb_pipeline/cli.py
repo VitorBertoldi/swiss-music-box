@@ -31,7 +31,8 @@ def build(
     dem_cache: Annotated[Path, typer.Option()] = DEFAULT_DEM_CACHE,
 ) -> None:
     """Build the sound (`<date>.json`) and motion (`motion-<date>.json`) files for one day."""
-    result = build_day(gtfs_dir, osm, service_date.date(), DemElevation(CopernicusDem(dem_cache)))
+    dem = CopernicusDem(dem_cache)
+    result = build_day(gtfs_dir, osm, service_date.date(), DemElevation(dem), SmoothedDem(dem))
     date_text = result.day.service_date
     out_dir.mkdir(parents=True, exist_ok=True)
     _write(out_dir / f"{date_text}.json", result.day.model_dump_json())

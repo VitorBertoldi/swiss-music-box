@@ -139,6 +139,9 @@ class Segment(_Model):
     coordinates: list[float] = Field(
         description="Flat [longitude, latitude, ...]; OSM geometry with redundant points removed"
     )
+    heights_dm: list[int] = Field(
+        description="Height above sea level per point of `coordinates`, in decimetres"
+    )
     overview_coordinates: list[float] = Field(
         description="The same path simplified to 15 m, for country-wide views"
     )
@@ -196,6 +199,7 @@ class LeadIn(_Model):
     coordinates: list[float] = Field(
         description="Flat [longitude, latitude, ...] in travel order, ending where the run starts"
     )
+    heights_dm: list[int] = Field(description="Height per point, in decimetres")
 
 
 class Tunnel(_Model):

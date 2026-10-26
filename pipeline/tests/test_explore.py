@@ -1,5 +1,5 @@
 import pytest
-from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation
+from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation, FakeTerrain
 
 from smb_pipeline.build import build_day
 from smb_pipeline.explore import Findings, explore
@@ -8,7 +8,9 @@ from smb_pipeline.explore import Findings, explore
 @pytest.fixture(scope="module")
 def findings() -> Findings:
     return explore(
-        build_day(MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation(), texture_bins=4).day
+        build_day(
+            MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation(), FakeTerrain(), texture_bins=4
+        ).day
     )
 
 

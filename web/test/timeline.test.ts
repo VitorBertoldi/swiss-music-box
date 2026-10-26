@@ -101,6 +101,7 @@ function throughStationMotion(): Motion {
 	const at5 = longitude + LONGITUDE_PER_5_KM;
 	const segment = (from: number, to: number) => ({
 		coordinates: [from, latitude, to, latitude],
+		heights_dm: [5400, 5400],
 		overview_coordinates: [from, latitude, to, latitude],
 		length_m: 5_000,
 		route: "track" as const,

@@ -123,12 +123,18 @@ def latitude_from_mercator_y(mercator: FloatArray) -> FloatArray:
 
 
 def simplify_indices(
-    eastings: Sequence[float], northings: Sequence[float], tolerance_m: float
+    eastings: Sequence[float],
+    northings: Sequence[float],
+    tolerance_m: float,
+    heights: Sequence[float] | None = None,
+    vertical_tolerance_m: float = 1.0,
 ) -> list[int]:
     """Indices of the points Douglas-Peucker keeps, measured in metres.
 
     Returning indices (not coordinates) lets the caller keep the exact WGS84 values of the
     kept points, instead of simplifying in degrees, where east-west and north-south differ.
+    With `heights`, a point is also kept when dropping it would move the profile by more than
+    `vertical_tolerance_m` (a straight track crossing a valley keeps its dip).
     """
     count = len(eastings)
     if count <= _POINTS_IN_A_SEGMENT:
@@ -138,31 +144,37 @@ def simplify_indices(
     pending = [(0, count - 1)]
     while pending:
         first, last = pending.pop()
-        farthest, farthest_distance = -1, tolerance_m
+        farthest, farthest_excess = -1, 1.0
         for index in range(first + 1, last):
-            distance = _distance_to_segment(
+            distance, share = _distance_to_segment(
                 (eastings[index], northings[index]),
                 (eastings[first], northings[first]),
                 (eastings[last], northings[last]),
             )
-            if distance > farthest_distance:
-                farthest, farthest_distance = index, distance
+            excess = distance / tolerance_m
+            if heights is not None:
+                expected = heights[first] + share * (heights[last] - heights[first])
+                excess = max(excess, abs(heights[index] - expected) / vertical_tolerance_m)
+            if excess > farthest_excess:
+                farthest, farthest_excess = index, excess
         if farthest >= 0:
             keep[farthest] = True
             pending.extend([(first, farthest), (farthest, last)])
     return [index for index, kept in enumerate(keep) if kept]
 
 
-def _distance_to_segment(point: Point, start: Point, end: Point) -> float:
+def _distance_to_segment(point: Point, start: Point, end: Point) -> tuple[float, float]:
+    """Distance from `point` to the segment, and the share (0..1) along it of the nearest point."""
     along_east, along_north = end[0] - start[0], end[1] - start[1]
     length_squared = along_east**2 + along_north**2
     if length_squared == 0:
-        return math.dist(point, start)
+        return math.dist(point, start), 0.0
     share = (
         (point[0] - start[0]) * along_east + (point[1] - start[1]) * along_north
     ) / length_squared
     share = min(1.0, max(0.0, share))
-    return math.dist(point, (start[0] + share * along_east, start[1] + share * along_north))
+    nearest = (start[0] + share * along_east, start[1] + share * along_north)
+    return math.dist(point, nearest), share
 
 
 def flat_lonlat(places: Sequence[Place]) -> list[float]:

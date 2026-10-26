@@ -6,7 +6,7 @@ import duckdb
 import pytest
 
 from smb_pipeline import events, feed, stations
-from smb_pipeline.geo import SWITZERLAND, LatLon
+from smb_pipeline.geo import SWITZERLAND, FloatArray, LatLon
 
 FIXTURES = Path(__file__).parent / "fixtures"
 MINI_GTFS = FIXTURES / "mini_gtfs"
@@ -23,6 +23,13 @@ class FakeElevation:
     def elevations(self, points: Sequence[LatLon]) -> list[float]:
         self.requests.append(list(points))
         return [round((p.lat - 46) * 1000, 1) for p in points]
+
+
+class FakeTerrain:
+    """Ground rising 100 m per degree of latitude above 46, from 400 m."""
+
+    def heights(self, latitudes: FloatArray, longitudes: FloatArray) -> FloatArray:
+        return 400 + (latitudes - 46) * 100 + 0 * longitudes
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation
+from conftest import MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation, FakeTerrain
 
 from smb_pipeline.build import build_day
 from smb_pipeline.contract import Motion
@@ -12,7 +12,7 @@ from smb_pipeline.motion import tunnel_occupancy
 
 @pytest.fixture(scope="module")
 def motion() -> Motion:
-    return build_day(MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation()).motion
+    return build_day(MINI_GTFS, MINI_OSM, SERVICE_DATE, FakeElevation(), FakeTerrain()).motion
 
 
 def _trip_legs(motion: Motion, trip: int) -> list[int]:

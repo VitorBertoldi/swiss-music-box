@@ -47,6 +47,7 @@ class OsmLine:
     eastings: FloatArray
     northings: FloatArray
     is_tunnel: bool = False
+    is_bridge: bool = False
     name: str | None = None
 
 
@@ -142,6 +143,7 @@ def _line(way: osmium.osm.Way, kinds: frozenset[NetworkKind]) -> OsmLine | None:
         eastings=eastings,
         northings=northings,
         is_tunnel=tags.get("tunnel") == "yes",
+        is_bridge=tags.get("bridge") not in (None, "no"),
         name=first_name(tags),
     )
 

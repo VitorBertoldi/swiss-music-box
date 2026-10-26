@@ -18,8 +18,10 @@ from smb_pipeline.contract import (
     RouteKind,
     Station,
 )
+from smb_pipeline.dem import HeightModel
 from smb_pipeline.elevation import ElevationProvider
 from smb_pipeline.geo import SWITZERLAND, WGS84_DECIMALS, Place
+from smb_pipeline.heights import HeightProfiler
 from smb_pipeline.lead_ins import LeadInBuilder
 from smb_pipeline.motion import (
     LegRow,
@@ -65,6 +67,7 @@ def build_day(
     osm_pbf: Path,
     service_date: date,
     elevation: ElevationProvider,
+    terrain: HeightModel,
     bounds: Bounds = SWITZERLAND,
     texture_bins: int = DEFAULT_TEXTURE_BINS,
 ) -> DayBuild:
@@ -76,7 +79,7 @@ def build_day(
         stations.materialize_parents(connection, bounds)
         events.materialize_departures(connection)
 
-        motion, routing = _motion(connection, osm_pbf, service_date)
+        motion, routing = _motion(connection, osm_pbf, service_date, terrain)
         station_rows = events.note_stations(connection)
         elevations_m = elevation.elevations([station.position for station in station_rows])
         day = Day(
@@ -105,7 +108,7 @@ def build_day(
 
 
 def _motion(
-    connection: duckdb.DuckDBPyConnection, osm_pbf: Path, service_date: date
+    connection: duckdb.DuckDBPyConnection, osm_pbf: Path, service_date: date, terrain: HeightModel
 ) -> tuple[Motion, RoutingReport]:
     positions = station_positions(connection)
     locator = stations.StationLocator(connection)
@@ -131,7 +134,12 @@ def _motion(
         outside_extract=_pairs_outside_extract(legs, paths),
     )
     motion = build_motion(
-        service_date.isoformat(), legs, paths, rail_graph.tunnels, LeadInBuilder(rail_graph)
+        service_date.isoformat(),
+        legs,
+        paths,
+        rail_graph.tunnels,
+        LeadInBuilder(rail_graph),
+        HeightProfiler(terrain, rail_graph),
     )
     return motion, report
 

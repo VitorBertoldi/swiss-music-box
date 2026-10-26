@@ -96,6 +96,8 @@ export function makeMotion(): Motion {
 		segments: [
 			{
 				coordinates,
+				// A gentle 1 % climb: 540 m at Bern to 640 m at 10 km.
+				heights_dm: [5400, 5900, 6400],
 				overview_coordinates: coordinates,
 				length_m: 10_000,
 				route: "track",
@@ -112,8 +114,8 @@ export function makeMotion(): Motion {
 			lead_in: [0, 1, 0],
 		},
 		lead_ins: [
-			{ coordinates: [longitude - LEAD_IN_LONGITUDE, latitude] },
-			{ coordinates: [longitude + 2 * LONGITUDE_PER_5_KM + LEAD_IN_LONGITUDE, latitude] },
+			{ coordinates: [longitude - LEAD_IN_LONGITUDE, latitude], heights_dm: [5400] },
+			{ coordinates: [longitude + 2 * LONGITUDE_PER_5_KM + LEAD_IN_LONGITUDE, latitude], heights_dm: [6400] },
 		],
 		tunnels: [
 			{
