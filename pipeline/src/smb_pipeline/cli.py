@@ -9,10 +9,11 @@ import typer
 
 from smb_pipeline.build import build_day
 from smb_pipeline.contract import Day, json_schemas
-from smb_pipeline.dem import CopernicusDem, DemElevation
+from smb_pipeline.dem import CopernicusDem, DemElevation, SmoothedDem
 from smb_pipeline.explore import explore as run_explorations
 from smb_pipeline.map_assets import extract_fonts, write_overview_tiles
 from smb_pipeline.relief import build_relief
+from smb_pipeline.terrain_tiles import write_terrain_tiles
 
 app = typer.Typer(no_args_is_help=True, help="Swiss Music Box data pipeline.")
 
@@ -72,6 +73,16 @@ def overview_tiles(
     """Copy the low zoom levels to plain files, for hosts without HTTP range requests."""
     count = write_overview_tiles(pmtiles, out_dir, SWITZERLAND_LONLAT)
     typer.echo(f"wrote {count} tiles to {out_dir}")
+
+
+@app.command()
+def terrain_tiles(
+    out: Annotated[Path, typer.Option(help="Terrain tiles (.pmtiles), Terrarium-encoded PNGs")],
+    dem_cache: Annotated[Path, typer.Option()] = DEFAULT_DEM_CACHE,
+) -> None:
+    """Encode the Copernicus terrain as tiles MapLibre can raise the 3D map over."""
+    count = write_terrain_tiles(SmoothedDem(CopernicusDem(dem_cache)), out, SWITZERLAND_LONLAT)
+    typer.echo(f"wrote {count} terrain tiles to {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
 @app.command()

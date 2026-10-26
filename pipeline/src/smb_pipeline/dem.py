@@ -65,6 +65,35 @@ class CopernicusDem:
             ]
         return heights
 
+    def smooth_heights(self, latitudes: FloatArray, longitudes: FloatArray) -> FloatArray:
+        """Height in metres at each point, blended between the four nearest pixel centres.
+
+        For surfaces drawn finer than the 90 m source (3D terrain), where nearest-pixel
+        lookups would show as steps. Near a tile's edge the blend stays inside that tile.
+        """
+        heights = np.full(latitudes.shape, MISSING_HEIGHT_M)
+        south_edges = np.floor(latitudes).astype(int)
+        west_edges = np.floor(longitudes).astype(int)
+        for south_lat, west_lon in set(zip(south_edges.flat, west_edges.flat, strict=True)):
+            tile = self._tile(int(south_lat), int(west_lon))
+            if tile is None:
+                continue
+            inside = (south_edges == south_lat) & (west_edges == west_lon)
+            # Fractional pixel position, measured between pixel centres; row 0 is north.
+            rows = (south_lat + 1 - latitudes[inside]) * PIXELS_PER_DEGREE - 0.5
+            cols = (longitudes[inside] - west_lon) * PIXELS_PER_DEGREE - 0.5
+            last_row, last_col = tile.shape[0] - 1, tile.shape[1] - 1
+            row0 = np.clip(np.floor(rows).astype(int), 0, last_row)
+            col0 = np.clip(np.floor(cols).astype(int), 0, last_col)
+            row1 = np.minimum(row0 + 1, last_row)
+            col1 = np.minimum(col0 + 1, last_col)
+            down = np.clip(rows - row0, 0, 1)
+            right = np.clip(cols - col0, 0, 1)
+            top = tile[row0, col0] * (1 - right) + tile[row0, col1] * right
+            bottom = tile[row1, col0] * (1 - right) + tile[row1, col1] * right
+            heights[inside] = top * (1 - down) + bottom * down
+        return heights
+
     def _tile(self, south_lat: int, west_lon: int) -> FloatArray | None:
         key = (south_lat, west_lon)
         if key not in self._tiles:
@@ -87,6 +116,16 @@ class CopernicusDem:
         response.raise_for_status()
         path.write_bytes(response.content)
         return path
+
+
+class SmoothedDem:
+    """`HeightModel` that blends between pixels: for surfaces drawn finer than 90 m."""
+
+    def __init__(self, dem: CopernicusDem) -> None:
+        self._dem = dem
+
+    def heights(self, latitudes: FloatArray, longitudes: FloatArray) -> FloatArray:
+        return self._dem.smooth_heights(latitudes, longitudes)
 
 
 class DemElevation:

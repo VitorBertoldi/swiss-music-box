@@ -58,7 +58,7 @@ ignore_missing_imports = true
 
 # pmtiles ships without type hints; only this adapter module calls it.
 [[tool.mypy.overrides]]
-module = ["smb_pipeline.map_assets", "test_map_assets"]
+module = ["smb_pipeline.map_assets", "smb_pipeline.terrain_tiles", "test_map_assets", "test_terrain_tiles"]
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]

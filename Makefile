@@ -9,8 +9,9 @@ PLANETILER_JAR := tools/planetiler-$(PLANETILER_VERSION).jar
 TILES_FILE := $(PUBLIC_DATA)/tiles/switzerland.pmtiles
 FONTS_URL := https://github.com/openmaptiles/fonts/releases/download/v2.0/noto-sans.zip
 FONTS_DIR := $(PUBLIC_DATA)/fonts
+TERRAIN_FILE := $(PUBLIC_DATA)/terrain/switzerland-terrain.pmtiles
 
-.PHONY: help setup gtfs osm data day relief tiles fonts overview contract dev build check check-pipeline check-web fix hooks smoke
+.PHONY: help setup gtfs osm data day relief terrain tiles fonts overview contract dev build check check-pipeline check-web fix hooks smoke
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -32,13 +33,18 @@ $(OSM_FILE):
 	mkdir -p $(dir $(OSM_FILE))
 	curl -L -o $(OSM_FILE) "$(OSM_URL)"
 
-data: day relief tiles fonts ## Build everything the player needs for DATE (default 2026-10-21)
+data: day relief terrain tiles fonts ## Build everything the player needs for DATE (default 2026-10-21)
 
 day: gtfs osm ## Day (sound) and motion files for DATE (~1 min)
 	cd pipeline && uv run smb build --gtfs-dir ../$(GTFS_DIR) --osm ../$(OSM_FILE) --date $(DATE) --out-dir ../$(PUBLIC_DATA)
 
 relief: osm ## Shaded relief cut to the OSM border; independent of the date (downloads DEM tiles once)
 	cd pipeline && uv run smb relief --osm ../$(OSM_FILE) --out ../$(PUBLIC_DATA)/relief.json
+
+terrain: $(TERRAIN_FILE) ## Terrain tiles for the 3D map (Copernicus 90 m, Terrarium PNGs; shares the DEM cache)
+
+$(TERRAIN_FILE):
+	cd pipeline && uv run smb terrain-tiles --out ../$(TERRAIN_FILE)
 
 tiles: $(TILES_FILE) ## Street-level vector tiles of Switzerland with Planetiler (~10 min; first run downloads ~1 GB)
 

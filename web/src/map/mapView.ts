@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Protocol } from "pmtiles";
 import type { LonLat } from "../render/lonLat";
 import { AssetBundleLoader, BUNDLE_PROTOCOL, parseBundleUrl } from "./assetBundles";
-import { LAYER_GROUP_KEY, type LayerGroup } from "./style";
+import { LAYER_GROUP_KEY, type LayerGroup, TERRAIN_SOURCE } from "./style";
 
 /** Where the camera is: what MapLibre calls the camera options, in our own terms. */
 export interface CameraPose {
@@ -37,6 +37,7 @@ let areProtocolsRegistered = false;
 export class MapView {
 	private readonly overlay: MapboxOverlay;
 	private mode: MapMode = "full";
+	private isTerrainShown = false;
 
 	private constructor(private readonly map: MapLibreMap) {
 		this.overlay = new MapboxOverlay({ interleaved: true, layers: [] });
@@ -70,7 +71,25 @@ export class MapView {
 
 	setStyle(style: StyleSpecification): void {
 		this.map.setStyle(style);
-		this.map.once("styledata", () => this.applyMode());
+		this.map.once("styledata", () => {
+			this.applyMode();
+			this.applyTerrain();
+		});
+	}
+
+	/** Whether this map has terrain tiles to stand on (not on the shared link). */
+	get hasTerrain(): boolean {
+		return this.map.getSource(TERRAIN_SOURCE) !== undefined;
+	}
+
+	get terrainShown(): boolean {
+		return this.isTerrainShown && this.hasTerrain;
+	}
+
+	/** Raises the map over the terrain, at its true height, or lays it flat again. */
+	showTerrain(shown: boolean): void {
+		this.isTerrainShown = shown;
+		this.applyTerrain();
 	}
 
 	showMode(mode: MapMode): void {
@@ -121,6 +140,10 @@ export class MapView {
 
 	resize(): void {
 		this.map.resize();
+	}
+
+	private applyTerrain(): void {
+		this.map.setTerrain(this.terrainShown ? { source: TERRAIN_SOURCE, exaggeration: 1 } : null);
 	}
 
 	private applyMode(): void {

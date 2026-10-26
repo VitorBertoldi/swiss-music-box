@@ -30,6 +30,7 @@ const SHOTS = [
 	{ name: "gotthard-north-portal", view: "8.66,46.82,13.5,45,160", keys: ["1"], minute: 1020 },
 	{ name: "follow-a-train", view: "7.4392,46.949,13,0,0", keys: ["1", "g"], minute: 480 },
 	{ name: "tour-projector-0700", keys: ["1", "t", "p"], minute: 420 },
+	{ name: "terrain-alps", view: "7.98,46.58,13,70,160", keys: ["1", "e"], minute: 450, still: true },
 	// Vehicle kinds up close at 12:08, each view centred on a vehicle of that kind in the 21 Oct data.
 	{ name: "kind-ic-train", view: "8.49324,47.39049,16.5,60,-70", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-ic-train-z15-top", view: "8.49324,47.39049,15,0,0", keys: ["1"], minute: 728, still: true },
@@ -38,6 +39,8 @@ const SHOTS = [
 	{ name: "kind-cable-car", view: "8.01392,46.62175,16.5,60,-150", keys: ["1"], minute: 728, still: true },
 	{ name: "kind-funicular", view: "7.67875,46.64029,17,60,-103", keys: ["1"], minute: 728, still: true },
 ];
+/** `SMOKE_ONLY=kind-` renders only the shots whose name starts with that, for quick iteration. */
+const ONLY = process.env.SMOKE_ONLY ?? "";
 const PLAY_MS = 2500; // long enough for trails to form and the scene crossfade to finish
 const STILL_PLAY_MS = 500; // a still shot plays briefly first: the first Play starts the outputs
 
@@ -64,7 +67,7 @@ async function main() {
 		await page.send("Page.enable");
 		for (const viewport of VIEWPORTS) {
 			await page.send("Emulation.setDeviceMetricsOverride", { ...viewport, deviceScaleFactor: 1, mobile: false });
-			for (const shot of SHOTS) {
+			for (const shot of SHOTS.filter((candidate) => candidate.name.startsWith(ONLY))) {
 				const address = shot.view === undefined ? url : `${url}?view=${shot.view}`;
 				await page.send("Page.navigate", { url: address });
 				await waitFor(

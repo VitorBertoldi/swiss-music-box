@@ -1,7 +1,7 @@
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from "maplibre-gl";
 import type { Relief } from "../contract/relief";
 import { type MapColours, type Rgba, toCss } from "../render/palette";
-import { glyphsUrl, type TileSource, tileUrl } from "./tileSource";
+import { glyphsUrl, type TileSource, terrainUrl, tileUrl } from "./tileSource";
 
 /** Layers are grouped so a scene can show the whole map, or only its outline. */
 export type LayerGroup = "ground" | "detail" | "orientation";
@@ -16,6 +16,10 @@ export interface StyleInputs {
 
 export const TILES_SOURCE = "openmaptiles";
 const RELIEF_SOURCE = "relief";
+/** Heights the map is raised over in 3D (Terrarium PNGs built by `make terrain`). */
+export const TERRAIN_SOURCE = "terrain";
+const TERRAIN_MAX_ZOOM = 11;
+const TERRAIN_TILE_SIZE_PX = 256;
 const TILES_ATTRIBUTION = "© OpenMapTiles © OpenStreetMap contributors";
 /** The first label layer: vehicles are drawn just below it, so names stay readable. */
 export const FIRST_LABEL_LAYER = "label-road";
@@ -32,6 +36,7 @@ const FLOOR_HEIGHT_M = 3; // fallback when OSM has no height for a building
 /** A complete MapLibre style for our tiles, colours and relief. */
 export function buildStyle(inputs: StyleInputs): StyleSpecification {
 	const { colours } = inputs;
+	const terrainTiles = terrainUrl(inputs.tiles);
 	return {
 		version: 8,
 		glyphs: glyphsUrl(inputs.tiles),
@@ -52,6 +57,17 @@ export function buildStyle(inputs: StyleInputs): StyleSpecification {
 					[inputs.relief.west, inputs.relief.south],
 				],
 			},
+			...(terrainTiles === null
+				? {}
+				: {
+						[TERRAIN_SOURCE]: {
+							type: "raster-dem",
+							tiles: [terrainTiles],
+							encoding: "terrarium",
+							tileSize: TERRAIN_TILE_SIZE_PX,
+							maxzoom: TERRAIN_MAX_ZOOM,
+						},
+					}),
 		},
 		layers: [
 			...groundLayers(colours),

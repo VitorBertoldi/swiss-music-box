@@ -129,6 +129,7 @@ async function main(): Promise<void> {
 		document.body.classList.toggle("projector", palette === PROJECTOR_PALETTE);
 		requestAnimationFrame(() => map.resize());
 	};
+	const toggleTerrain = (): void => map.showTerrain(!map.terrainShown);
 	const togglePanel = (): void => {
 		document.body.classList.toggle("hide-panel");
 	};
@@ -163,6 +164,7 @@ async function main(): Promise<void> {
 			...scenes.list().map((scene, index): [string, () => void] => [String(index + 1), () => showScene(scene.id)]),
 			...CAMERA_CHOICES.map((choice): [string, () => void] => [choice.key, () => useCamera(choice.id)]),
 			["p", toggleProjectorMode],
+			["e", toggleTerrain],
 			["h", togglePanel],
 			["f", toggleFullscreen],
 		]),

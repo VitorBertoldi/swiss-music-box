@@ -47,6 +47,16 @@ export function glyphsUrl(source: TileSource): string {
 		: bundleUrl(`${source.dataUrl}/fonts/glyphs.json`, "{fontstack}/{range}");
 }
 
+/**
+ * The terrain tile URL template, or null where the 3D terrain can't be served: its file needs
+ * range requests, like the full map, so the shared link stays flat.
+ */
+export function terrainUrl(source: TileSource): string | null {
+	return source.kind === "pmtiles"
+		? `pmtiles://${source.dataUrl}/terrain/switzerland-terrain.pmtiles/{z}/{x}/{y}`
+		: null;
+}
+
 function pmtilesUrl(dataUrl: string): string {
 	return `${dataUrl}/tiles/switzerland.pmtiles`;
 }
