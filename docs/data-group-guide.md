@@ -71,7 +71,9 @@ never change.
   is needed for the next timetable year.
 - The GTFS feed is updated regularly; the one used so far has `feed_version = 20261017`.
 - The OSM URL always gives the *latest* extract, so builds are not reproducible unless you keep
-  the downloaded file and record its date. The one used so far was downloaded on 19 Oct 2026.
+  the downloaded file and record its date. The one used so far is the Geofabrik extract of
+  18 Oct 2026 (read it from the file header: `osmosis_replication_timestamp`), downloaded on
+  19 Oct.
 - The DEM cache (`data/cache/dem`) currently holds 599 tiles (1.5 GB); only the 18 covering
   latitude 45–47°N and longitude 5–10°E are needed.
 
@@ -133,7 +135,7 @@ CREATE SCHEMA transport;
 CREATE TABLE transport.dataset_release (
     version      TEXT PRIMARY KEY,        -- e.g. 2026-10-21-v1
     gtfs_version TEXT NOT NULL,           -- feed_info.feed_version, e.g. 20261017
-    osm_version  TEXT NOT NULL,           -- e.g. geofabrik-2026-10-19
+    osm_version  TEXT NOT NULL,           -- e.g. geofabrik-2026-10-18
     built_at     TIMESTAMPTZ NOT NULL
 );
 
@@ -441,11 +443,12 @@ stops; Zürich HB → Bern is 116.9 km.
 ```sh
 # 1. Record the release
 docker exec smb-db psql -U postgres -d transport -c \
-  "INSERT INTO transport.dataset_release VALUES ('2026-10-21-v1', '20261017', 'geofabrik-2026-10-19', now());"
+  "INSERT INTO transport.dataset_release VALUES ('2026-10-21-v1', '20261017', 'geofabrik-2026-10-18', now());"
 
-# 2. Dump
+# 2. Dump (without owners and grants: the grants are added by 20-backend-role.sql,
+#    after the restore, so the dump never refers to a role that doesn't exist yet)
 mkdir -p ~/smb-db-image && cd ~/smb-db-image
-docker exec smb-db pg_dump -U postgres transport | gzip > 10-data.sql.gz
+docker exec smb-db pg_dump -U postgres --no-owner --no-privileges transport | gzip > 10-data.sql.gz
 ```
 
 `20-backend-role.sql` (runs after the data is restored):
@@ -480,7 +483,8 @@ Prototype measurements: database 760 MB, dump 39 MB, image 742 MB, first start r
 
 ### How the other groups use it
 
-`compose.yaml` in the repo root:
+`compose.yaml` in the root of the **backend repo** (`smb-backend`), which is where the database is
+used; this repo only builds and publishes the image:
 
 ```yaml
 services:
@@ -509,7 +513,7 @@ volumes:
 ### Versioning
 
 1. Never overwrite a tag. Publish `...-v2`.
-2. Update the tag in `compose.yaml` and commit it.
+2. Tell the domain group; they update the tag in `compose.yaml` in the backend repo and commit it.
 3. Everyone runs `docker compose down -v && docker compose up -d`. The `-v` is required: without
    it PostgreSQL keeps the old data and does not restore the new image.
 

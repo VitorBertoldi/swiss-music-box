@@ -5,7 +5,9 @@ For the domain group, which builds the whole backend. This document covers **wha
 (section 11). Services and repositories in detail come in a later document.
 
 Language: Java 21 or later (records, sealed classes, pattern-matching `switch`).
-Data source: the transport database described in [`data-group-guide.md`](data-group-guide.md).
+Data source: the transport database built by the data group, described in `docs/data-group-guide.md`
+in the [swiss-music-box repo](https://github.com/VitorBertoldi/swiss-music-box). Start it with
+`docker compose up -d` from the root of this repo (`compose.yaml`).
 
 ---
 
