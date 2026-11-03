@@ -558,7 +558,7 @@ password `dev`; tables are under Schemas → `transport`.
 
 ### First tasks
 
-1. **Agree the contract with the backend group**: put `schema.sql` in `contract/` and settle the
+1. **Agree the contract with the domain group**: put `schema.sql` in `contract/` and settle the
    open questions below.
 2. **Pin the sources**: keep the downloaded files per release and record their versions.
 3. **Move the prototype into the pipeline**: a `release` step in `pipeline/` with a list of
@@ -569,7 +569,7 @@ password `dev`; tables are under Schemas → `transport`.
 7. **Publish the map files** as a GitHub Release.
 8. **Add the remaining tables** when the frontend needs them: `lead_ins`, `pylons`.
 
-### Open questions to agree with the backend group
+### Open questions to agree with the domain group
 
 | Question | Suggested answer |
 |---|---|

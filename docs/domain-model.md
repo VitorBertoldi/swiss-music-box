@@ -1,6 +1,6 @@
 # Swiss Music Box: Domain Model
 
-For the backend (model) team. This document covers **what the domain is responsible for**,
+For the domain group, which builds the whole backend. This document covers **what the domain is responsible for**,
 **how it is modelled in classes**, and **which REST endpoints the backend exposes on top of it**
 (section 11). Services and repositories in detail come in a later document.
 
@@ -32,7 +32,42 @@ tested with plain JUnit and fixed objects, without a database.
 
 ## 2. Responsibilities
 
-| The domain is responsible for | Example |
+The project has **two groups**:
+
+- **The data group** turns the raw sources into the transport database and publishes it.
+- **The domain group** builds the backend on top of that database: every layer, from reading the
+  tables to answering HTTP requests.
+
+### What the domain group owns
+
+| Layer | Package | Responsible for | Example |
+|---|---|---|---|
+| **Domain** | `domain` | The rules: what the facts mean at a given moment (section 2.2) | `Trip.isRunningAt`, `Vehicle.positionAt` |
+| **Repositories** | `infrastructure` | Reading the database with SQL/JDBC, turning rows into domain objects, keeping reference data in memory | `JdbcTripRepository` |
+| **Application services** | `application` | Use cases: combining repositories and domain objects to answer one request | `VehicleTrackingService` |
+| **API** | `api` | HTTP: endpoints, reading parameters, JSON, error codes (section 11) | `GET /api/v1/vehicles` |
+
+The layers depend inwards: the API calls services, services use repositories and the domain, and
+the domain depends on nothing. The repository *interfaces* belong to the domain; their SQL
+*implementations* belong to infrastructure.
+
+### Not the domain group's responsibility
+
+| Task | Owned by |
+|---|---|
+| Downloading, cleaning and fixing the data | Data group |
+| The database schema and its versions | Data group (agreed with the domain group: it's the contract) |
+| Publishing the database image and the map files | Data group |
+| Drawing the map, vehicles and 3D | The web player, a client of the API |
+| Music | Later, separate |
+
+**When the data is wrong** (a missing station, a time that goes backwards), report it to the data
+group and wait for a fixed release. Don't patch data in Java: the fix would be lost on the next
+release, and the two groups would disagree about what's true.
+
+### 2.2 What the domain layer is responsible for
+
+| The domain layer is responsible for | Example |
 |---|---|
 | **Representing** the network and timetable as objects that are always valid | A `Trip` can't exist with fewer than 2 stops or with time going backwards |
 | **Time rules** for the service day, including after midnight | 25:10 is a valid time on the 21 Oct service day |
@@ -44,14 +79,9 @@ tested with plain JUnit and fixed objects, without a database.
 | **Departures** from a station | What leaves Zürich HB between 08:00 and 08:10 |
 | **Odd cases** in the data, always handled the same way | Zero-minute legs, missing paths, straight-line paths, generated trips |
 
-| The domain is not responsible for | Owned by |
-|---|---|
-| Downloading, cleaning or fixing data | Data group |
-| SQL, JDBC, connection handling, caching | Infrastructure (repository implementations) |
-| Combining several steps into a use case | Application services |
-| HTTP, JSON, URLs | API layer |
-| Drawing, colours, 3D models, zoom levels | Frontend |
-| Music | Later, separate |
+Within the backend, the domain layer itself doesn't do SQL (repositories), doesn't combine steps
+into use cases (application services), and doesn't know about HTTP or JSON (API). Keeping it free
+of all three is what makes it testable with plain JUnit.
 
 ---
 
@@ -194,6 +224,18 @@ In words:
 ---
 
 ## 5. Packages
+
+The backend has four top-level packages, one per layer:
+
+```
+ch.usi.smb
+├── domain          the rules (this section)
+├── infrastructure  repository implementations: SQL, JDBC, caching
+├── application     use cases: services
+└── api             HTTP controllers and JSON
+```
+
+Inside `domain`:
 
 ```
 ch.usi.smb.domain
